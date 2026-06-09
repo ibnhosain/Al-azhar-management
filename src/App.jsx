@@ -1009,23 +1009,136 @@ function Calculator() {
 }
 
 // ──────────────────────── PAGE: SETTINGS ────────────────────────
-function Settings() {
-  const [form, setForm] = useState({ instituteName:"মাদরাসাতুল আযহার আল-আরাবিয়া", address:"সদর, ময়মনসিংহ", phone:"01804909500", email:"", academicYear:"২০২৬", currency:"৳" });
-  const [saved, setSaved] = useState(false);
-  const save = () => { setSaved(true); setTimeout(()=>setSaved(false),2000); };
+function SettingsModal({ title, icon, onClose, children }) {
   return (
-    <div>
-      <div style={sectionTitle}>সিস্টেম সেটিংস</div>
-      <div style={card}>
-        <div style={{ fontSize:13, fontWeight:600, color:"#546E7A", marginBottom:14 }}>প্রতিষ্ঠানের তথ্য</div>
-        <FormRow label="প্রতিষ্ঠানের নাম"><input style={inputStyle} value={form.instituteName} onChange={e=>setForm({...form,instituteName:e.target.value})}/></FormRow>
-        <FormRow label="ঠিকানা"><input style={inputStyle} value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></FormRow>
-        <FormRow label="ফোন নম্বর"><input style={inputStyle} value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></FormRow>
-        <FormRow label="ইমেইল"><input style={inputStyle} value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="info@madrasa.com"/></FormRow>
-        <FormRow label="শিক্ষাবর্ষ"><input style={inputStyle} value={form.academicYear} onChange={e=>setForm({...form,academicYear:e.target.value})}/></FormRow>
-        <FormRow label="মুদ্রা চিহ্ন"><input style={inputStyle} value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}/></FormRow>
-        <button onClick={save} style={btn()}>{saved?"✅ সংরক্ষিত হয়েছে!":"পরিবর্তন সংরক্ষণ করুন"}</button>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"#fff", borderRadius:14, width:520, maxWidth:"95vw", maxHeight:"88vh", overflowY:"auto", boxShadow:"0 8px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ background:"linear-gradient(135deg,#1B5E20,#2E7D32)", padding:"16px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", borderRadius:"14px 14px 0 0" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:22 }}>{icon}</span>
+            <span style={{ fontWeight:700, fontSize:15, color:"#fff" }}>{title}</span>
+          </div>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.2)", border:"none", color:"#fff", borderRadius:"50%", width:30, height:30, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+        </div>
+        <div style={{ padding:22 }}>{children}</div>
       </div>
+    </div>
+  );
+}
+
+// SVG Icons for Settings cards (matching PDF design)
+const SvgIcon = ({ d, d2, viewBox="0 0 24 24" }) => (
+  <svg width="28" height="28" viewBox={viewBox} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d={d} fill="#2E7D32"/>
+    {d2 && <path d={d2} fill="#2E7D32"/>}
+  </svg>
+);
+
+function Settings() {
+  const [activeModal, setActiveModal] = useState(null);
+  const [siteForm, setSiteForm] = useState({ instituteName:"মাদরাসাতুল আযহার আল-আরাবিয়া", address:"সদর, ময়মনসিংহ", phone:"01747-658744", email:"", academicYear:"২০২৬", currency:"৳" });
+  const [saved, setSaved] = useState(false);
+  const saveSite = () => { setSaved(true); setTimeout(()=>{ setSaved(false); setActiveModal(null); },1500); };
+
+  const settingCards = [
+    { id:"site",     emoji:"🗄️",  label:"সাইট সেটিংস" },
+    { id:"invoice",  emoji:"💵",  label:"ইনভয়েস ডিজাইন" },
+    { id:"shift",    emoji:"📅",  label:"উপস্থিতি শিফট সেটিংস" },
+    { id:"stu_shift",emoji:"🎓",  label:"শিক্ষার্থী শিফট এসাইন" },
+    { id:"tch_shift",emoji:"👨‍🏫", label:"শিক্ষক শিফট এসাইন" },
+    { id:"sms",      emoji:"💬",  label:"এসএমএস সেটিংস" },
+    { id:"sms_stat", emoji:"📨",  label:"এসএমএস স্ট্যাটাস" },
+    { id:"user",     emoji:"👥",  label:"ব্যবহারকারী" },
+    { id:"role",     emoji:"🧑‍💼", label:"ব্যবহারকারী রোল" },
+    { id:"adm_fee",  emoji:"💰",  label:"গ্লোবাল ভর্তি ফি" },
+    { id:"ext_fee",  emoji:"🏦",  label:"অতিরিক্ত ভর্তি ফি" },
+    { id:"session",  emoji:"⏳",  label:"সেশন" },
+    { id:"class",    emoji:"🏫",  label:"ক্লাস" },
+    { id:"section",  emoji:"▦",   label:"সেকশন" },
+    { id:"subject",  emoji:"📄",  label:"পাঠ্যবিষয় সমূহ" },
+    { id:"sub_asgn", emoji:"📖",  label:"পাঠ্যবিষয় বরাদ্দ" },
+    { id:"delete",   emoji:"🗑️",  label:"ডেটা ডিলিট সেটিং" },
+    { id:"license",  emoji:"🪪",  label:"লাইসেন্স সেটিংস" },
+    { id:"form",     emoji:"📝",  label:"ভর্তি ফর্ম" },
+    { id:"guardian", emoji:"👨‍👩‍👧", label:"অভিভাবক শিক্ষার্থী তথ্য সেটিংস" },
+    { id:"poor",     emoji:"🤲",  label:"হত দরিদ্র" },
+    { id:"sign",     emoji:"✍️",  label:"স্বাক্ষর" },
+  ];
+
+  // PDF-এর মতো কার্ড স্টাইল: সাদা ব্যাকগ্রাউন্ড, উপরে সোনালি লাইন, বাম-ডানে ধূসর বর্ডার
+  const cardBase = {
+    background:"#fff",
+    borderRadius:10,
+    padding:"20px 10px 16px",
+    textAlign:"center",
+    cursor:"pointer",
+    border:"1px solid #D6D6D6",
+    borderTop:"3px solid #B8960C",
+    transition:"all 0.18s",
+    display:"flex",
+    flexDirection:"column",
+    alignItems:"center",
+    gap:10,
+    position:"relative",
+  };
+
+  return (
+    <div style={{ background:"#E8E8E8", minHeight:"100%", padding:2 }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:18, background:"#fff", borderRadius:10, padding:"14px 18px", border:"1px solid #E0E0E0" }}>
+        <div style={{ width:42, height:42, borderRadius:10, background:"#E8F5E9", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>⚙️</div>
+        <span style={{ fontWeight:700, fontSize:16, color:"#263238" }}>সিস্টেম সেটিংস</span>
+      </div>
+
+      {/* Cards Grid — 4 columns like PDF */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
+        {settingCards.map(c => (
+          <div key={c.id}
+            onClick={() => setActiveModal(c.id)}
+            style={cardBase}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.13)"; e.currentTarget.style.transform="translateY(-2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow="none"; e.currentTarget.style.transform="translateY(0)"; }}>
+            {/* Corner brackets like PDF */}
+            <div style={{ position:"absolute", top:6, left:6, width:10, height:10, borderTop:"2px solid #B8960C", borderLeft:"2px solid #B8960C", borderRadius:"2px 0 0 0" }}/>
+            <div style={{ position:"absolute", top:6, right:6, width:10, height:10, borderTop:"2px solid #B8960C", borderRight:"2px solid #B8960C", borderRadius:"0 2px 0 0" }}/>
+            <div style={{ position:"absolute", bottom:6, left:6, width:10, height:10, borderBottom:"2px solid #B8960C", borderLeft:"2px solid #B8960C", borderRadius:"0 0 0 2px" }}/>
+            <div style={{ position:"absolute", bottom:6, right:6, width:10, height:10, borderBottom:"2px solid #B8960C", borderRight:"2px solid #B8960C", borderRadius:"0 0 2px 0" }}/>
+            {/* Icon circle */}
+            <div style={{ width:54, height:54, borderRadius:"50%", background:"#F5F0DC", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, border:"1px solid #E8D87A" }}>
+              {c.emoji}
+            </div>
+            <div style={{ fontSize:12, color:"#37474F", fontWeight:500, lineHeight:1.4 }}>{c.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Site Settings Modal */}
+      {activeModal==="site" && (
+        <SettingsModal title="সাইট সেটিংস" icon="🗄️" onClose={() => setActiveModal(null)}>
+          <FormRow label="প্রতিষ্ঠানের নাম"><input style={inputStyle} value={siteForm.instituteName} onChange={e=>setSiteForm({...siteForm,instituteName:e.target.value})}/></FormRow>
+          <FormRow label="ঠিকানা"><input style={inputStyle} value={siteForm.address} onChange={e=>setSiteForm({...siteForm,address:e.target.value})}/></FormRow>
+          <FormRow label="ফোন নম্বর"><input style={inputStyle} value={siteForm.phone} onChange={e=>setSiteForm({...siteForm,phone:e.target.value})}/></FormRow>
+          <FormRow label="ইমেইল"><input style={inputStyle} value={siteForm.email} onChange={e=>setSiteForm({...siteForm,email:e.target.value})} placeholder="info@madrasa.com"/></FormRow>
+          <FormRow label="শিক্ষাবর্ষ"><input style={inputStyle} value={siteForm.academicYear} onChange={e=>setSiteForm({...siteForm,academicYear:e.target.value})}/></FormRow>
+          <FormRow label="মুদ্রা চিহ্ন"><input style={inputStyle} value={siteForm.currency} onChange={e=>setSiteForm({...siteForm,currency:e.target.value})}/></FormRow>
+          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
+            <button onClick={() => setActiveModal(null)} style={btn("#9E9E9E")}>বাতিল</button>
+            <button onClick={saveSite} style={btn()}>{saved?"✅ সংরক্ষিত!":"সংরক্ষণ করুন"}</button>
+          </div>
+        </SettingsModal>
+      )}
+
+      {/* Generic modal for other cards */}
+      {activeModal && activeModal!=="site" && (
+        <SettingsModal title={settingCards.find(c=>c.id===activeModal)?.label} icon={settingCards.find(c=>c.id===activeModal)?.emoji} onClose={() => setActiveModal(null)}>
+          <div style={{ textAlign:"center", padding:"24px 0" }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🚧</div>
+            <div style={{ fontSize:14, color:"#546E7A", marginBottom:6 }}>এই সেকশনটি শীঘ্রই যোগ হবে</div>
+            <div style={{ fontSize:12, color:"#90A4AE" }}>ফিচারটি ডেভেলপমেন্টের অধীনে রয়েছে</div>
+            <button onClick={() => setActiveModal(null)} style={{ ...btn(), marginTop:18 }}>বন্ধ করুন</button>
+          </div>
+        </SettingsModal>
+      )}
     </div>
   );
 }
@@ -1396,20 +1509,19 @@ function Changelog() {
 
 // ──────────────────────── QUICK ACTIONS ────────────────────────
 const quickActions = [
-  { icon:"🎓", label:"নতুন শিক্ষার্থী ভর্তি", color:"#FF7043", menu:3 },
-  { icon:"👨‍🏫", label:"নতুন শিক্ষক যোগ", color:"#9C27B0", menu:6 },
-  { icon:"💵", label:"নতুন পেমেন্ট/রশিদ", color:"#00BCD4", menu:9 },
-  { icon:"📋", label:"হাজিরা নিন", color:"#4CAF50", menu:2 },
-  { icon:"🔔", label:"নোটিশ প্রকাশ", color:"#FFC107", menu:14 },
-  { icon:"📅", label:"পরীক্ষার ফলাফল", color:"#3F51B5", menu:4 },
-  { icon:"🏠", label:"বোর্ডিং এন্ট্রি", color:"#795548", menu:13 },
-  { icon:"🤝", label:"নতুন স্পনসর", color:"#E91E63", menu:10 },
-  { icon:"💸", label:"খরচ এন্ট্রি", color:"#F44336", menu:8 },
+  { icon:"🎓", label:"নতুন শিক্ষার্থী ভর্তি", color:"#FF7043", menu:2 },
+  { icon:"👨‍🏫", label:"নতুন শিক্ষক যোগ", color:"#9C27B0", menu:5 },
+  { icon:"💵", label:"নতুন পেমেন্ট/রশিদ", color:"#00BCD4", menu:8 },
+  { icon:"📋", label:"হাজিরা নিন", color:"#4CAF50", menu:1 },
+  { icon:"🔔", label:"নোটিশ প্রকাশ", color:"#FFC107", menu:13 },
+  { icon:"📅", label:"পরীক্ষার ফলাফল", color:"#3F51B5", menu:3 },
+  { icon:"🏠", label:"বোর্ডিং এন্ট্রি", color:"#795548", menu:12 },
+  { icon:"🤝", label:"নতুন স্পনসর", color:"#E91E63", menu:9 },
+  { icon:"💸", label:"খরচ এন্ট্রি", color:"#F44336", menu:7 },
 ];
 
 // ──────────────────────── MENU ITEMS ────────────────────────
 const menuItems = [
-  { icon:"📊", label:"মডিউল ড্যাশবোর্ড" },
   { icon:"⚙️", label:"সিস্টেম সেটিংস" },
   { icon:"📋", label:"ডিজিটাল হাজিরা" },
   { icon:"👥", label:"শিক্ষার্থী ব্যবস্থাপনা" },
@@ -1430,26 +1542,26 @@ const menuItems = [
 ];
 
 // ──────────────────────── PAGE ROUTER ────────────────────────
-function PageContent({ index }) {
+function PageContent({ index, onDashboard }) {
   switch(index) {
-    case 0: return <Dashboard/>;
-    case 1: return <Settings/>;
-    case 2: return <Attendance/>;
-    case 3: return <Students/>;
-    case 4: return <Academic/>;
-    case 5: return <Promotion/>;
-    case 6: return <Teachers/>;
-    case 7: return <Admin/>;
-    case 8: return <Finance/>;
-    case 9: return <Receipts/>;
-    case 10: return <Sponsors/>;
-    case 11: return <Loans/>;
-    case 12: return <OrphanSponsors/>;
-    case 13: return <Boarding/>;
-    case 14: return <Notices/>;
-    case 15: return <Calculator/>;
-    case 16: return <Helpline/>;
-    case 17: return <Changelog/>;
+    case -1: return <Dashboard/>;
+    case 0: return <Settings/>;
+    case 1: return <Attendance/>;
+    case 2: return <Students/>;
+    case 3: return <Academic/>;
+    case 4: return <Promotion/>;
+    case 5: return <Teachers/>;
+    case 6: return <Admin/>;
+    case 7: return <Finance/>;
+    case 8: return <Receipts/>;
+    case 9: return <Sponsors/>;
+    case 10: return <Loans/>;
+    case 11: return <OrphanSponsors/>;
+    case 12: return <Boarding/>;
+    case 13: return <Notices/>;
+    case 14: return <Calculator/>;
+    case 15: return <Helpline/>;
+    case 16: return <Changelog/>;
     default: return <Dashboard/>;
   }
 }
@@ -1457,7 +1569,7 @@ function PageContent({ index }) {
 // ──────────────────────── APP ────────────────────────
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState(0);
+  const [activeMenu, setActiveMenu] = useState(-1);
   const [fabOpen, setFabOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -1477,9 +1589,9 @@ export default function App() {
 
       {/* Sidebar */}
       <div style={{ width:sidebarOpen?240:0, minWidth:sidebarOpen?240:0, background:"#fff", borderRight:"1px solid #E8ECEF", display:"flex", flexDirection:"column", transition:"all 0.25s", overflow:"hidden", flexShrink:0 }}>
-        <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid #F0F2F5" }}>
+        <div onClick={() => goTo(-1)} style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid #F0F2F5", cursor:"pointer", background: activeMenu===-1?"#E8F5E9":"#fff", transition:"background 0.15s" }}>
           <div style={{ width:38, height:38, borderRadius:"50%", background:G, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🕌</div>
-          <span style={{ fontWeight:600, fontSize:13, color:"#263238" }}>ড্যাশবোর্ড</span>
+          <span style={{ fontWeight:700, fontSize:13, color: activeMenu===-1?G:"#263238" }}>📊 ড্যাশবোর্ড</span>
         </div>
         <div style={{ overflowY:"auto", flex:1, padding:"8px 0" }}>
           {menuItems.map((item,i) => (
@@ -1520,8 +1632,8 @@ export default function App() {
 
         {/* Breadcrumb */}
         <div style={{ padding:"8px 20px", background:"#fff", borderBottom:"1px solid #F0F2F5", fontSize:12, color:"#78909C" }}>
-          <span style={{ cursor:"pointer", color:G }} onClick={() => goTo(0)}>ড্যাশবোর্ড</span>
-          {activeMenu !== 0 && <><span style={{ margin:"0 6px" }}>›</span><span style={{ color:"#263238" }}>{menuItems[activeMenu].label}</span></>}
+          <span style={{ cursor:"pointer", color:G }} onClick={() => goTo(-1)}>ড্যাশবোর্ড</span>
+          {activeMenu !== -1 && <><span style={{ margin:"0 6px" }}>›</span><span style={{ color:"#263238" }}>{menuItems[activeMenu].label}</span></>}
         </div>
 
         {/* Content */}
