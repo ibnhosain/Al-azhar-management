@@ -18,4 +18,9 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  // Node পরিবেশে চলা কনফিগ ফাইল (Vite/ESLint) — process, module ইত্যাদি গ্লোবাল
+  {
+    files: ['*.config.js'],
+    languageOptions: { globals: globals.node },
+  },
 ])

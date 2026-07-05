@@ -1,5 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  students as studentsApi, teachers as teachersApi, receipts as receiptsApi,
+  expenses as expensesApi, notices as noticesApi, boarding as boardingApi,
+  sponsors as sponsorsApi, loans as loansApi, orphans as orphansApi,
+  attendance as attendanceApi, environment, seedResource,
+} from "./data";
+
+// নতুন কোড তৈরির সহায়ক: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন RCP-005)
+function genCode(list, prefix) {
+  const nums = list.map(x => parseInt(String(x.code||"").replace(/\D/g,""),10)).filter(n => !isNaN(n));
+  return `${prefix}-` + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,"0");
+}
 
 // ──────────────────────── SHARED STYLES ────────────────────────
 const G = "#2E7D32";
@@ -406,18 +418,50 @@ function Dashboard() {
 
 // ──────────────────────── PAGE: STUDENTS ────────────────────────
 function Students() {
-  const [students, setStudents] = useState(initStudents);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({ name:"", class:"নার্সারি গ্রুপ", roll:"", gender:"ছাত্র", fee:"", status:"সক্রিয়" });
-  const filtered = students.filter(s => s.name.includes(search) || s.id.includes(search));
-  const save = () => {
+
+  const reload = async () => {
+    setStudents(await studentsApi.list());
+    setLoading(false);
+  };
+
+  // প্রথম লোড: ওয়েবে ডেমো ডেটা seed (Electron-এ DB নিজেই seed করে), তারপর তালিকা আনা
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("students", initStudents.map(s => ({
+          code:s.id, name:s.name, class:s.class, roll:s.roll, gender:s.gender, fee:s.fee, status:s.status,
+        })));
+      }
+      const rows = await studentsApi.list();
+      if (alive) { setStudents(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const filtered = students.filter(s => s.name.includes(search) || String(s.code||"").includes(search));
+
+  // নতুন আইডি: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন STD-006)
+  const nextCode = () => {
+    const nums = students.map(s => parseInt(String(s.code||"").replace(/\D/g,""),10)).filter(n => !isNaN(n));
+    return "STD-" + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,"0");
+  };
+
+  const save = async () => {
     if (!form.name || !form.roll) return alert("নাম ও রোল নম্বর আবশ্যক");
-    setStudents([...students, { ...form, id:`STD-00${students.length+1}` }]);
+    await studentsApi.create({ ...form, code: nextCode() });
     setModal(false);
     setForm({ name:"", class:"নার্সারি গ্রুপ", roll:"", gender:"ছাত্র", fee:"", status:"সক্রিয়" });
+    await reload();
   };
-  const del = (id) => setStudents(students.filter(s => s.id !== id));
+
+  const del = async (id) => { await studentsApi.remove(id); await reload(); };
+
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -429,9 +473,13 @@ function Students() {
         <table style={tbl}>
           <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>শ্রেণি</th><th style={th}>রোল</th><th style={th}>লিঙ্গ</th><th style={th}>ফি</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
           <tbody>
-            {filtered.map((s,i) => (
-              <tr key={i}>
-                <td style={td}>{s.id}</td>
+            {loading ? (
+              <tr><td style={td} colSpan={8}>লোড হচ্ছে...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td style={td} colSpan={8}>কোনো শিক্ষার্থী পাওয়া যায়নি</td></tr>
+            ) : filtered.map((s) => (
+              <tr key={s.id}>
+                <td style={td}>{s.code}</td>
                 <td style={td}>{s.name}</td>
                 <td style={td}>{s.class}</td>
                 <td style={td}>{s.roll}</td>
@@ -464,18 +512,49 @@ function Students() {
 // ──────────────────────── PAGE: ATTENDANCE ────────────────────────
 function Attendance() {
   const today = new Date().toLocaleDateString("bn-BD");
-  const [attendance, setAttendance] = useState(
-    initStudents.map(s => ({ ...s, present:"উপস্থিত" }))
-  );
+  const dateKey = new Date().toISOString().slice(0, 10); // সংরক্ষণের স্থায়ী কী
+  const [attendance, setAttendance] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const statuses = ["উপস্থিত","অনুপস্থিত","দেরিতে উপস্থিত","ছুটি"];
+
+  // শিক্ষার্থী তালিকা + ওই দিনের সংরক্ষিত হাজিরা লোড করা
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("students", initStudents.map(s => ({
+          code:s.id, name:s.name, class:s.class, roll:s.roll, gender:s.gender, fee:s.fee, status:s.status,
+        })));
+      }
+      const list = await studentsApi.list();
+      const existing = await attendanceApi.getByDate(dateKey);
+      const byCode = {};
+      existing.forEach(a => { byCode[a.student_code] = a.status; });
+      const rows = list.map(s => ({
+        student_code:s.code, student_name:s.name, class:s.class, roll:s.roll,
+        present: byCode[s.code] || "উপস্থিত",
+      }));
+      if (alive) { setAttendance(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, [dateKey]);
+
   const counts = { উপস্থিত:0, অনুপস্থিত:0, "দেরিতে উপস্থিত":0, ছুটি:0 };
-  attendance.forEach(a => counts[a.present]++);
+  attendance.forEach(a => { if (counts[a.present] !== undefined) counts[a.present]++; });
+
+  const saveAttendance = async () => {
+    await attendanceApi.saveForDate(dateKey, attendance.map(a => ({
+      student_code:a.student_code, student_name:a.student_name, class:a.class, roll:a.roll, status:a.present,
+    })));
+    setSaved(true);
+  };
+
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
         <div style={sectionTitle}>ডিজিটাল হাজিরা — {today}</div>
-        <button onClick={() => setSaved(true)} style={btn()}>{saved?"✅ সংরক্ষিত":"হাজিরা সংরক্ষণ করুন"}</button>
+        <button onClick={saveAttendance} style={btn()}>{saved?"✅ সংরক্ষিত":"হাজিরা সংরক্ষণ করুন"}</button>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:16 }}>
         {Object.entries(counts).map(([k,v]) => {
@@ -490,9 +569,13 @@ function Attendance() {
         <table style={tbl}>
           <thead><tr><th style={th}>নাম</th><th style={th}>শ্রেণি</th><th style={th}>রোল</th><th style={th}>উপস্থিতি</th></tr></thead>
           <tbody>
-            {attendance.map((s,i) => (
+            {loading ? (
+              <tr><td style={td} colSpan={4}>লোড হচ্ছে...</td></tr>
+            ) : attendance.length === 0 ? (
+              <tr><td style={td} colSpan={4}>কোনো শিক্ষার্থী পাওয়া যায়নি</td></tr>
+            ) : attendance.map((s,i) => (
               <tr key={i}>
-                <td style={td}>{s.name}</td>
+                <td style={td}>{s.student_name}</td>
                 <td style={td}>{s.class}</td>
                 <td style={td}>{s.roll}</td>
                 <td style={td}>
@@ -514,15 +597,47 @@ function Attendance() {
 
 // ──────────────────────── PAGE: TEACHERS ────────────────────────
 function Teachers() {
-  const [teachers, setTeachers] = useState(initTeachers);
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ name:"", subject:"", phone:"", salary:"", status:"সক্রিয়" });
-  const save = () => {
+
+  const reload = async () => {
+    setTeachers(await teachersApi.list());
+    setLoading(false);
+  };
+
+  // প্রথম লোড: ওয়েবে ডেমো ডেটা seed (Electron-এ DB নিজেই seed করে), তারপর তালিকা আনা
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("teachers", initTeachers.map(t => ({
+          code:t.id, name:t.name, subject:t.subject, phone:t.phone, salary:t.salary, status:t.status,
+        })));
+      }
+      const rows = await teachersApi.list();
+      if (alive) { setTeachers(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // নতুন আইডি: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন TCH-006)
+  const nextCode = () => {
+    const nums = teachers.map(t => parseInt(String(t.code||"").replace(/\D/g,""),10)).filter(n => !isNaN(n));
+    return "TCH-" + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,"0");
+  };
+
+  const save = async () => {
     if (!form.name) return alert("নাম আবশ্যক");
-    setTeachers([...teachers, { ...form, id:`TCH-00${teachers.length+1}` }]);
+    await teachersApi.create({ ...form, code: nextCode() });
     setModal(false);
     setForm({ name:"", subject:"", phone:"", salary:"", status:"সক্রিয়" });
+    await reload();
   };
+
+  const del = async (id) => { await teachersApi.remove(id); await reload(); };
+
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -533,11 +648,15 @@ function Teachers() {
         <table style={tbl}>
           <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>বিষয়</th><th style={th}>ফোন</th><th style={th}>বেতন</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
           <tbody>
-            {teachers.map((t,i) => (
-              <tr key={i}>
-                <td style={td}>{t.id}</td><td style={td}>{t.name}</td><td style={td}>{t.subject}</td><td style={td}>{t.phone}</td><td style={td}>{t.salary}</td>
+            {loading ? (
+              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
+            ) : teachers.length === 0 ? (
+              <tr><td style={td} colSpan={7}>কোনো শিক্ষক পাওয়া যায়নি</td></tr>
+            ) : teachers.map((t) => (
+              <tr key={t.id}>
+                <td style={td}>{t.code}</td><td style={td}>{t.name}</td><td style={td}>{t.subject}</td><td style={td}>{t.phone}</td><td style={td}>{t.salary}</td>
                 <td style={td}><span style={badge(t.status==="সক্রিয়"?"#4CAF50":t.status==="ছুটিতে"?"#FFC107":"#F44336")}>{t.status}</span></td>
-                <td style={td}><button onClick={() => setTeachers(teachers.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
+                <td style={td}><button onClick={() => del(t.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
               </tr>
             ))}
           </tbody>
@@ -562,19 +681,38 @@ function Teachers() {
 
 // ──────────────────────── PAGE: FINANCE ────────────────────────
 function Finance() {
-  const [expenses, setExpenses] = useState([
-    { id:"EXP-001", title:"শিক্ষক বেতন", amount:"৳১৫,০০০", date:"০১/০৬/২০২৬", category:"বেতন" },
-    { id:"EXP-002", title:"বিদ্যুৎ বিল", amount:"৳৯০", date:"০২/০৬/২০২৬", category:"ইউটিলিটি" },
-    { id:"EXP-003", title:"পরিষ্কার সামগ্রী", amount:"৳৩০০", date:"০৩/০৬/২০২৬", category:"রক্ষণাবেক্ষণ" },
-  ]);
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ title:"", amount:"", date:"", category:"বেতন" });
-  const save = () => {
+
+  const reload = async () => { setExpenses(await expensesApi.list()); setLoading(false); };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("expenses", [
+          { code:"EXP-001", title:"শিক্ষক বেতন", amount:"৳১৫,০০০", date:"০১/০৬/২০২৬", category:"বেতন" },
+          { code:"EXP-002", title:"বিদ্যুৎ বিল", amount:"৳৯০", date:"০২/০৬/২০২৬", category:"ইউটিলিটি" },
+          { code:"EXP-003", title:"পরিষ্কার সামগ্রী", amount:"৳৩০০", date:"০৩/০৬/২০২৬", category:"রক্ষণাবেক্ষণ" },
+        ]);
+      }
+      const rows = await expensesApi.list();
+      if (alive) { setExpenses(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
     if (!form.title || !form.amount) return alert("শিরোনাম ও পরিমাণ আবশ্যক");
-    setExpenses([...expenses, { ...form, id:`EXP-00${expenses.length+1}` }]);
+    await expensesApi.create({ ...form, code: genCode(expenses, "EXP") });
     setModal(false);
     setForm({ title:"", amount:"", date:"", category:"বেতন" });
+    await reload();
   };
+
+  const del = async (id) => { await expensesApi.remove(id); await reload(); };
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -591,8 +729,12 @@ function Finance() {
         <table style={tbl}>
           <thead><tr><th style={th}>আইডি</th><th style={th}>শিরোনাম</th><th style={th}>পরিমাণ</th><th style={th}>তারিখ</th><th style={th}>ক্যাটাগরি</th><th style={th}>কার্যক্রম</th></tr></thead>
           <tbody>
-            {expenses.map((e,i) => (
-              <tr key={i}><td style={td}>{e.id}</td><td style={td}>{e.title}</td><td style={td}>{e.amount}</td><td style={td}>{e.date}</td><td style={td}><span style={badge("#FF7043")}>{e.category}</span></td><td style={td}><button onClick={() => setExpenses(expenses.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td></tr>
+            {loading ? (
+              <tr><td style={td} colSpan={6}>লোড হচ্ছে...</td></tr>
+            ) : expenses.length === 0 ? (
+              <tr><td style={td} colSpan={6}>কোনো খরচ নেই</td></tr>
+            ) : expenses.map((e) => (
+              <tr key={e.id}><td style={td}>{e.code}</td><td style={td}>{e.title}</td><td style={td}>{e.amount}</td><td style={td}>{e.date}</td><td style={td}><span style={badge("#FF7043")}>{e.category}</span></td><td style={td}><button onClick={() => del(e.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td></tr>
             ))}
           </tbody>
         </table>
@@ -633,17 +775,37 @@ function printHTML(html) {
 
 // ──────────────────────── PAGE: RECEIPTS ────────────────────────
 function Receipts() {
-  const [receipts, setReceipts] = useState(initReceipts);
+  const [receipts, setReceipts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ student:"", class:"নার্সারি গ্রুপ", roll:"", type:"বেতন", amount:"", date:"", status:"পরিশোধিত" });
 
-  const save = () => {
+  const reload = async () => { setReceipts(await receiptsApi.list()); setLoading(false); };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("receipts", initReceipts.map(r => ({
+          code:r.id, student:r.student, type:r.type, amount:r.amount, date:r.date, status:r.status,
+        })));
+      }
+      const rows = await receiptsApi.list();
+      if (alive) { setReceipts(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
     if (!form.student || !form.amount) return alert("শিক্ষার্থী ও পরিমাণ আবশ্যক");
     const today = new Date().toLocaleDateString("bn-BD");
-    setReceipts([...receipts, { ...form, id:`RCP-00${receipts.length+1}`, date: form.date || today }]);
+    await receiptsApi.create({ ...form, code: genCode(receipts, "RCP"), date: form.date || today });
     setModal(false);
     setForm({ student:"", class:"নার্সারি গ্রুপ", roll:"", type:"বেতন", amount:"", date:"", status:"পরিশোধিত" });
+    await reload();
   };
+
+  const del = async (id) => { await receiptsApi.remove(id); await reload(); };
 
   const printReceipt = (r) => {
     printHTML(`
@@ -657,7 +819,7 @@ function Receipts() {
         </div>
         <div style="padding:20px">
           <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <tr><td style="padding:8px 0;color:#546E7A;width:40%">রশিদ নং</td><td style="padding:8px 0;font-weight:600">: ${r.id}</td></tr>
+            <tr><td style="padding:8px 0;color:#546E7A;width:40%">রশিদ নং</td><td style="padding:8px 0;font-weight:600">: ${r.code || "—"}</td></tr>
             <tr><td style="padding:8px 0;color:#546E7A">শিক্ষার্থীর নাম</td><td style="padding:8px 0;font-weight:600">: ${r.student}</td></tr>
             <tr><td style="padding:8px 0;color:#546E7A">শ্রেণি</td><td style="padding:8px 0;font-weight:600">: ${r.class||"—"}</td></tr>
             <tr><td style="padding:8px 0;color:#546E7A">রোল নম্বর</td><td style="padding:8px 0;font-weight:600">: ${r.roll||"—"}</td></tr>
@@ -699,9 +861,13 @@ function Receipts() {
             </tr>
           </thead>
           <tbody>
-            {receipts.map((r,i) => (
-              <tr key={i}>
-                <td style={td}>{r.id}</td>
+            {loading ? (
+              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
+            ) : receipts.length === 0 ? (
+              <tr><td style={td} colSpan={7}>কোনো রশিদ নেই</td></tr>
+            ) : receipts.map((r) => (
+              <tr key={r.id}>
+                <td style={td}>{r.code}</td>
                 <td style={td}>{r.student}</td>
                 <td style={td}>{r.type}</td>
                 <td style={td}>{r.amount}</td>
@@ -710,7 +876,7 @@ function Receipts() {
                 <td style={td}>
                   <div style={{ display:"flex", gap:6 }}>
                     <button onClick={() => printReceipt(r)} style={{ ...btn("#1565C0"), padding:"4px 10px", fontSize:11 }}>🖨️ প্রিন্ট</button>
-                    <button onClick={() => setReceipts(receipts.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button>
+                    <button onClick={() => del(r.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button>
                   </div>
                 </td>
               </tr>
@@ -739,17 +905,43 @@ function Receipts() {
 
 // ──────────────────────── PAGE: NOTICES ────────────────────────
 function Notices() {
-  const [notices, setNotices] = useState(initNotices);
+  const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [expand, setExpand] = useState(null);
   const [form, setForm] = useState({ title:"", priority:"সাধারণ", body:"" });
-  const save = () => {
+
+  // নতুন নোটিশ উপরে দেখানো (id অনুযায়ী অবরোহী)
+  const reload = async () => {
+    const rows = await noticesApi.list();
+    setNotices([...rows].sort((a,b) => b.id - a.id));
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("notices", [...initNotices].reverse().map(n => ({
+          title:n.title, priority:n.priority, body:n.body, date:n.date,
+        })));
+      }
+      const rows = await noticesApi.list();
+      if (alive) { setNotices([...rows].sort((a,b) => b.id - a.id)); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
     if (!form.title || !form.body) return alert("শিরোনাম ও বিষয়বস্তু আবশ্যক");
     const today = new Date().toLocaleDateString("bn-BD");
-    setNotices([{ ...form, id:notices.length+1, date:today }, ...notices]);
+    await noticesApi.create({ ...form, date: today });
     setModal(false);
     setForm({ title:"", priority:"সাধারণ", body:"" });
+    await reload();
   };
+
+  const del = async (id) => { await noticesApi.remove(id); await reload(); };
   const priColors = { জরুরি:"#F44336", গুরুত্বপূর্ণ:"#FF7043", সাধারণ:"#4CAF50" };
   return (
     <div>
@@ -757,8 +949,12 @@ function Notices() {
         <div style={sectionTitle}>নোটিশ এবং ঘোষণা <span style={badge("#FFC107")}>মোট: {notices.length}</span></div>
         <button onClick={() => setModal(true)} style={btn()}>+ নতুন নোটিশ</button>
       </div>
-      {notices.map((n,i) => (
-        <div key={i} style={{ ...card, cursor:"pointer", borderLeft:`4px solid ${priColors[n.priority]||"#9E9E9E"}` }} onClick={() => setExpand(expand===i?null:i)}>
+      {loading ? (
+        <div style={{ ...card, textAlign:"center", color:"#90A4AE" }}>লোড হচ্ছে...</div>
+      ) : notices.length === 0 ? (
+        <div style={{ ...card, textAlign:"center", color:"#90A4AE" }}>কোনো নোটিশ নেই</div>
+      ) : notices.map((n,i) => (
+        <div key={n.id} style={{ ...card, cursor:"pointer", borderLeft:`4px solid ${priColors[n.priority]||"#9E9E9E"}` }} onClick={() => setExpand(expand===i?null:i)}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
               <span style={{ fontWeight:600, fontSize:14, color:"#263238" }}>{n.title}</span>
@@ -766,7 +962,7 @@ function Notices() {
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ fontSize:12, color:"#90A4AE" }}>{n.date}</span>
-              <button onClick={e => { e.stopPropagation(); setNotices(notices.filter((_,j)=>j!==i)); }} style={{ ...btn("#F44336"), padding:"3px 9px", fontSize:11 }}>মুছুন</button>
+              <button onClick={e => { e.stopPropagation(); del(n.id); }} style={{ ...btn("#F44336"), padding:"3px 9px", fontSize:11 }}>মুছুন</button>
             </div>
           </div>
           {expand===i && <div style={{ marginTop:12, padding:12, background:"#F9F9F9", borderRadius:8, fontSize:13, color:"#546E7A", lineHeight:1.6 }}>{n.body}</div>}
@@ -789,15 +985,36 @@ function Notices() {
 
 // ──────────────────────── PAGE: BOARDING ────────────────────────
 function Boarding() {
-  const [list, setList] = useState(initBoarding);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ name:"", room:"", floor:"", fee:"", status:"সক্রিয়" });
-  const save = () => {
+
+  const reload = async () => { setList(await boardingApi.list()); setLoading(false); };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("boarding", initBoarding.map(b => ({
+          code:b.id, name:b.name, room:b.room, floor:b.floor, fee:b.fee, status:b.status,
+        })));
+      }
+      const rows = await boardingApi.list();
+      if (alive) { setList(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
     if (!form.name || !form.room) return alert("নাম ও রুম নম্বর আবশ্যক");
-    setList([...list, { ...form, id:`BRD-00${list.length+1}` }]);
+    await boardingApi.create({ ...form, code: genCode(list, "BRD") });
     setModal(false);
     setForm({ name:"", room:"", floor:"", fee:"", status:"সক্রিয়" });
+    await reload();
   };
+
+  const del = async (id) => { await boardingApi.remove(id); await reload(); };
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -808,10 +1025,14 @@ function Boarding() {
         <table style={tbl}>
           <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>রুম</th><th style={th}>তলা</th><th style={th}>ফি</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
           <tbody>
-            {list.map((b,i) => (
-              <tr key={i}><td style={td}>{b.id}</td><td style={td}>{b.name}</td><td style={td}>{b.room}</td><td style={td}>{b.floor}</td><td style={td}>{b.fee}</td>
+            {loading ? (
+              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
+            ) : list.length === 0 ? (
+              <tr><td style={td} colSpan={7}>কোনো এন্ট্রি নেই</td></tr>
+            ) : list.map((b) => (
+              <tr key={b.id}><td style={td}>{b.code}</td><td style={td}>{b.name}</td><td style={td}>{b.room}</td><td style={td}>{b.floor}</td><td style={td}>{b.fee}</td>
                 <td style={td}><span style={badge(b.status==="সক্রিয়"?"#4CAF50":"#F44336")}>{b.status}</span></td>
-                <td style={td}><button onClick={() => setList(list.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
+                <td style={td}><button onClick={() => del(b.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
               </tr>
             ))}
           </tbody>
@@ -836,15 +1057,36 @@ function Boarding() {
 
 // ──────────────────────── PAGE: SPONSORS ────────────────────────
 function Sponsors() {
-  const [list, setList] = useState(initSponsors);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ name:"", phone:"", amount:"", type:"মাসিক", date:"" });
-  const save = () => {
+
+  const reload = async () => { setList(await sponsorsApi.list()); setLoading(false); };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("sponsors", initSponsors.map(s => ({
+          code:s.id, name:s.name, phone:s.phone, amount:s.amount, type:s.type, date:s.date,
+        })));
+      }
+      const rows = await sponsorsApi.list();
+      if (alive) { setList(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
     if (!form.name || !form.amount) return alert("নাম ও পরিমাণ আবশ্যক");
-    setList([...list, { ...form, id:`SPN-00${list.length+1}` }]);
+    await sponsorsApi.create({ ...form, code: genCode(list, "SPN") });
     setModal(false);
     setForm({ name:"", phone:"", amount:"", type:"মাসিক", date:"" });
+    await reload();
   };
+
+  const del = async (id) => { await sponsorsApi.remove(id); await reload(); };
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -855,9 +1097,13 @@ function Sponsors() {
         <table style={tbl}>
           <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>ফোন</th><th style={th}>পরিমাণ</th><th style={th}>ধরন</th><th style={th}>তারিখ</th><th style={th}>কার্যক্রম</th></tr></thead>
           <tbody>
-            {list.map((s,i) => (
-              <tr key={i}><td style={td}>{s.id}</td><td style={td}>{s.name}</td><td style={td}>{s.phone}</td><td style={td}>{s.amount}</td><td style={td}><span style={badge("#E91E63")}>{s.type}</span></td><td style={td}>{s.date}</td>
-                <td style={td}><button onClick={() => setList(list.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
+            {loading ? (
+              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
+            ) : list.length === 0 ? (
+              <tr><td style={td} colSpan={7}>কোনো স্পনসর নেই</td></tr>
+            ) : list.map((s) => (
+              <tr key={s.id}><td style={td}>{s.code}</td><td style={td}>{s.name}</td><td style={td}>{s.phone}</td><td style={td}>{s.amount}</td><td style={td}><span style={badge("#E91E63")}>{s.type}</span></td><td style={td}>{s.date}</td>
+                <td style={td}><button onClick={() => del(s.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
               </tr>
             ))}
           </tbody>
@@ -882,15 +1128,36 @@ function Sponsors() {
 
 // ──────────────────────── PAGE: LOANS ────────────────────────
 function Loans() {
-  const [list, setList] = useState(initLoans);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ name:"", amount:"", due:"", date:"", status:"বকেয়া" });
-  const save = () => {
+
+  const reload = async () => { setList(await loansApi.list()); setLoading(false); };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("loans", initLoans.map(l => ({
+          code:l.id, name:l.name, amount:l.amount, due:l.due, date:l.date, status:l.status,
+        })));
+      }
+      const rows = await loansApi.list();
+      if (alive) { setList(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
     if (!form.name || !form.amount) return alert("নাম ও পরিমাণ আবশ্যক");
-    setList([...list, { ...form, id:`LN-00${list.length+1}` }]);
+    await loansApi.create({ ...form, code: genCode(list, "LN") });
     setModal(false);
     setForm({ name:"", amount:"", due:"", date:"", status:"বকেয়া" });
+    await reload();
   };
+
+  const del = async (id) => { await loansApi.remove(id); await reload(); };
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -901,10 +1168,14 @@ function Loans() {
         <table style={tbl}>
           <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>মোট ঋণ</th><th style={th}>বকেয়া</th><th style={th}>তারিখ</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
           <tbody>
-            {list.map((l,i) => (
-              <tr key={i}><td style={td}>{l.id}</td><td style={td}>{l.name}</td><td style={td}>{l.amount}</td><td style={td}>{l.due}</td><td style={td}>{l.date}</td>
+            {loading ? (
+              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
+            ) : list.length === 0 ? (
+              <tr><td style={td} colSpan={7}>কোনো ঋণ এন্ট্রি নেই</td></tr>
+            ) : list.map((l) => (
+              <tr key={l.id}><td style={td}>{l.code}</td><td style={td}>{l.name}</td><td style={td}>{l.amount}</td><td style={td}>{l.due}</td><td style={td}>{l.date}</td>
                 <td style={td}><span style={badge(l.status==="পরিশোধিত"?"#4CAF50":"#F44336")}>{l.status}</span></td>
-                <td style={td}><button onClick={() => setList(list.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
+                <td style={td}><button onClick={() => del(l.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
               </tr>
             ))}
           </tbody>
@@ -929,15 +1200,36 @@ function Loans() {
 
 // ──────────────────────── PAGE: ORPHAN SPONSORS ────────────────────────
 function OrphanSponsors() {
-  const [list, setList] = useState(initOrphans);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ orphan:"", sponsor:"", amount:"", month:"", status:"বকেয়া" });
-  const save = () => {
+
+  const reload = async () => { setList(await orphansApi.list()); setLoading(false); };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (environment === "web") {
+        seedResource("orphans", initOrphans.map(o => ({
+          code:o.id, orphan:o.orphan, sponsor:o.sponsor, amount:o.amount, month:o.month, status:o.status,
+        })));
+      }
+      const rows = await orphansApi.list();
+      if (alive) { setList(rows); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
     if (!form.orphan || !form.sponsor) return alert("এতিম ও স্পনসরের নাম আবশ্যক");
-    setList([...list, { ...form, id:`ORP-00${list.length+1}` }]);
+    await orphansApi.create({ ...form, code: genCode(list, "ORP") });
     setModal(false);
     setForm({ orphan:"", sponsor:"", amount:"", month:"", status:"বকেয়া" });
+    await reload();
   };
+
+  const del = async (id) => { await orphansApi.remove(id); await reload(); };
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -948,10 +1240,14 @@ function OrphanSponsors() {
         <table style={tbl}>
           <thead><tr><th style={th}>আইডি</th><th style={th}>এতিমের নাম</th><th style={th}>স্পনসর</th><th style={th}>পরিমাণ</th><th style={th}>মাস</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
           <tbody>
-            {list.map((o,i) => (
-              <tr key={i}><td style={td}>{o.id}</td><td style={td}>{o.orphan}</td><td style={td}>{o.sponsor}</td><td style={td}>{o.amount}</td><td style={td}>{o.month}</td>
+            {loading ? (
+              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
+            ) : list.length === 0 ? (
+              <tr><td style={td} colSpan={7}>কোনো এন্ট্রি নেই</td></tr>
+            ) : list.map((o) => (
+              <tr key={o.id}><td style={td}>{o.code}</td><td style={td}>{o.orphan}</td><td style={td}>{o.sponsor}</td><td style={td}>{o.amount}</td><td style={td}>{o.month}</td>
                 <td style={td}><span style={badge(o.status==="পরিশোধিত"?"#4CAF50":"#F44336")}>{o.status}</span></td>
-                <td style={td}><button onClick={() => setList(list.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
+                <td style={td}><button onClick={() => del(o.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
               </tr>
             ))}
           </tbody>

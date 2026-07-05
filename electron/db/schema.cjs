@@ -1,0 +1,90 @@
+// ────────────────────────────────────────────────────────────────
+//  schema.cjs — ডেটাবেস টেবিল ও migration।
+//  প্রতিটি migration ক্রমিকভাবে একবারই চলে; বর্তমান সংস্করণ
+//  SQLite-এর `PRAGMA user_version`-এ সংরক্ষিত থাকে।
+//  ভবিষ্যতে নতুন টেবিল/পরিবর্তন দরকার হলে শুধু `migrations` অ্যারের
+//  শেষে একটি নতুন ফাংশন যোগ করুন — পুরনো DB নিজে থেকেই আপডেট হবে।
+// ────────────────────────────────────────────────────────────────
+
+const migrations = [
+  // ── v1: মূল টেবিল (Step 4-এ প্রথমে এগুলো wire হবে) ──
+  function v1(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS students (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        code        TEXT    UNIQUE,
+        name        TEXT    NOT NULL,
+        class       TEXT,
+        roll        TEXT,
+        gender      TEXT,
+        fee         TEXT,
+        status      TEXT    NOT NULL DEFAULT 'সক্রিয়',
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS teachers (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        code        TEXT    UNIQUE,
+        name        TEXT    NOT NULL,
+        subject     TEXT,
+        phone       TEXT,
+        salary      TEXT,
+        status      TEXT    NOT NULL DEFAULT 'সক্রিয়',
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+    `);
+  },
+
+  // ── v2: বাকি ফিচারের টেবিল (entities config থেকে জেনারেট) + attendance ──
+  function v2(db) {
+    const entities = require("./entities.cjs");
+    for (const [table, columns] of Object.entries(entities)) {
+      const cols = columns.map((c) => `        ${c} TEXT`).join(",\n");
+      db.exec(
+        `CREATE TABLE IF NOT EXISTS ${table} (\n` +
+          `        id INTEGER PRIMARY KEY AUTOINCREMENT,\n` +
+          `${cols},\n` +
+          `        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))\n` +
+          `      );`
+      );
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS attendance (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_code  TEXT,
+        student_name  TEXT,
+        class         TEXT,
+        roll          TEXT,
+        date          TEXT NOT NULL,
+        status        TEXT,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        UNIQUE(student_code, date)
+      );
+    `);
+  },
+];
+
+// বর্তমান স্কিমা সংস্করণ পড়া।
+function getUserVersion(db) {
+  const row = db.get("PRAGMA user_version");
+  return row ? Number(row.user_version) : 0;
+}
+
+// প্রয়োজনীয় সব migration চালানো (প্রতিটি transaction-এ, নিরাপদভাবে)।
+function initSchema(db) {
+  const current = getUserVersion(db);
+  for (let v = current; v < migrations.length; v++) {
+    db.exec("BEGIN");
+    try {
+      migrations[v](db);
+      db.exec(`PRAGMA user_version = ${v + 1}`);
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+  return { from: current, to: migrations.length };
+}
+
+module.exports = { initSchema, getUserVersion };
