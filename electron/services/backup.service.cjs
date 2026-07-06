@@ -1,15 +1,17 @@
 // ────────────────────────────────────────────────────────────────
-//  backup.service.cjs — ডেটাবেস ব্যাকআপ, রিস্টোর, অটো-ব্যাকআপ, লোকেশন পরিবর্তন।
-//  DB একটি একক ফাইল (madrasa.db) হওয়ায় ব্যাকআপ = নিরাপদ ফাইল কপি।
-//  ব্যাকআপ ও DB ইনস্টল ফোল্ডারের বাইরে → সফটওয়্যার আপডেটেও অক্ষত।
+//  backup.service.cjs — এক ZIP ফাইলে সম্পূর্ণ ব্যাকআপ:
+//    madrasa.db + photos/ + config.json  (ভবিষ্যতের attachment-ও এখানেই)
+//  Restore পুরোটা ফিরিয়ে আনে (DB লোকেশন বর্তমানটাই রাখা হয়)।
+//  ব্যাকআপ/DB ইনস্টল ফোল্ডারের বাইরে → আপডেটেও নিরাপদ।
 // ────────────────────────────────────────────────────────────────
 const fs = require("fs");
 const path = require("path");
+const AdmZip = require("adm-zip");
 const settings = require("./settings.service.cjs");
 const paths = require("../config/paths.cjs");
 const conn = require("../db/connection.cjs");
 
-const AUTO_KEEP = 10; // সর্বশেষ কয়টি ব্যাকআপ রাখা হবে (অটো-প্রুন)
+const AUTO_KEEP = 10;
 
 function ensureBackupDir() {
   const dir = paths.getBackupDir(settings.getDbDirectory());
@@ -27,9 +29,19 @@ function createBackup(label) {
   const src = conn.getDatabasePath();
   if (!src || !fs.existsSync(src)) throw new Error("ডেটাবেস ফাইল পাওয়া যায়নি");
   const dir = ensureBackupDir();
-  const name = `madrasa-backup-${timestamp()}${label ? "-" + label : ""}.db`;
+  const name = `madrasa-backup-${timestamp()}${label ? "-" + label : ""}.zip`;
   const dest = path.join(dir, name);
-  fs.copyFileSync(src, dest);
+
+  const zip = new AdmZip();
+  zip.addLocalFile(src, "", "madrasa.db");
+  const photosDir = paths.getPhotosDir(settings.getDbDirectory());
+  if (fs.existsSync(photosDir)) zip.addLocalFolder(photosDir, "photos");
+  try {
+    const cfg = paths.getConfigFilePath();
+    if (fs.existsSync(cfg)) zip.addLocalFile(cfg, "", "config.json");
+  } catch { /* ignore */ }
+  zip.writeZip(dest);
+
   settings.saveSettings({ lastBackupAt: new Date().toISOString() });
   return { name, path: dest, size: fs.statSync(dest).size, at: new Date().toISOString() };
 }
@@ -38,12 +50,12 @@ function listBackups() {
   const dir = ensureBackupDir();
   return fs
     .readdirSync(dir)
-    .filter((f) => f.endsWith(".db"))
+    .filter((f) => f.endsWith(".zip"))
     .map((f) => {
       const st = fs.statSync(path.join(dir, f));
       return { name: f, path: path.join(dir, f), size: st.size, at: st.mtime.toISOString() };
     })
-    .sort((a, b) => (a.at < b.at ? 1 : -1)); // নতুন আগে
+    .sort((a, b) => (a.at < b.at ? 1 : -1));
 }
 
 function deleteBackup(backupPath) {
@@ -51,13 +63,42 @@ function deleteBackup(backupPath) {
   return { ok: true };
 }
 
-function restoreBackup(backupPath) {
-  if (!fs.existsSync(backupPath)) throw new Error("ব্যাকআপ ফাইল পাওয়া যায়নি");
+function restoreBackup(zipPath) {
+  if (!fs.existsSync(zipPath)) throw new Error("ব্যাকআপ ফাইল পাওয়া যায়নি");
+  try { createBackup("pre-restore"); } catch { /* এগোব */ }
+
+  const dir = ensureBackupDir();
+  const tmp = path.join(dir, "_restore_tmp");
+  fs.rmSync(tmp, { recursive: true, force: true });
+  new AdmZip(zipPath).extractAllTo(tmp, true);
+
   const live = conn.getDatabasePath();
-  try { createBackup("pre-restore"); } catch { /* নিরাপত্তা-ব্যাকআপ ব্যর্থ হলেও এগোব */ }
   conn.closeDatabase();
-  fs.copyFileSync(backupPath, live);
-  conn.initDatabase(); // নতুন ডেটা নিয়ে পুনরায় খোলা
+
+  const tdb = path.join(tmp, "madrasa.db");
+  if (fs.existsSync(tdb)) fs.copyFileSync(tdb, live);
+
+  const tphotos = path.join(tmp, "photos");
+  if (fs.existsSync(tphotos)) {
+    const photosDir = paths.getPhotosDir(settings.getDbDirectory());
+    fs.rmSync(photosDir, { recursive: true, force: true });
+    fs.cpSync(tphotos, photosDir, { recursive: true });
+  }
+
+  // config ফিরিয়ে আনি, তবে dbDirectory বর্তমানটাই রাখি (লোকেশন হারাবে না)
+  try {
+    const tcfg = path.join(tmp, "config.json");
+    if (fs.existsSync(tcfg)) {
+      const restored = JSON.parse(fs.readFileSync(tcfg, "utf-8"));
+      restored.dbDirectory = settings.getDbDirectory();
+      restored.setupComplete = true;
+      fs.writeFileSync(paths.getConfigFilePath(), JSON.stringify(restored, null, 2), "utf-8");
+      settings.reset();
+    }
+  } catch { /* ignore */ }
+
+  fs.rmSync(tmp, { recursive: true, force: true });
+  conn.initDatabase();
   return { ok: true };
 }
 
@@ -84,14 +125,16 @@ function setAutoBackup(enabled) {
   return getInfo();
 }
 
-// DB লোকেশন পরিবর্তন: বর্তমান DB নতুন ফোল্ডারে কপি করে সেখান থেকে চালানো।
+// DB লোকেশন পরিবর্তন: DB + photos নতুন ফোল্ডারে কপি করে সেখান থেকে চালানো।
 function changeDbLocation(newDir) {
   fs.mkdirSync(newDir, { recursive: true });
   const src = conn.getDatabasePath();
   const dest = paths.getDbFilePath(newDir);
+  const oldPhotos = paths.getPhotosDir(settings.getDbDirectory());
   conn.closeDatabase();
   if (src && fs.existsSync(src) && path.resolve(src) !== path.resolve(dest)) {
     fs.copyFileSync(src, dest);
+    try { if (fs.existsSync(oldPhotos)) fs.cpSync(oldPhotos, paths.getPhotosDir(newDir), { recursive: true }); } catch { /* ignore */ }
   }
   settings.setDbDirectory(newDir);
   conn.initDatabase();
@@ -106,6 +149,7 @@ function getInfo() {
     dbPath: conn.getDatabasePath(),
     dbDirectory: settings.getDbDirectory(),
     backupDir: paths.getBackupDir(settings.getDbDirectory()),
+    photosDir: paths.getPhotosDir(settings.getDbDirectory()),
     autoBackup: s.autoBackup,
     autoBackupIntervalHours: s.autoBackupIntervalHours,
     lastBackupAt: s.lastBackupAt,
@@ -115,7 +159,6 @@ function getInfo() {
   };
 }
 
-// প্রথম-রান সেটআপ সম্পন্ন চিহ্নিত করা
 function completeSetup() {
   settings.saveSettings({ setupComplete: true });
   return getInfo();

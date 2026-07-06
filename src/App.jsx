@@ -8,6 +8,7 @@ import {
   attendance as attendanceApi, environment, seedResource,
 } from "./data";
 import BoardingModule from "./modules/boarding/BoardingModule";
+import KitchenModule from "./modules/kitchen/KitchenModule";
 import BackupRestore from "./modules/settings/BackupRestore";
 
 // নতুন কোড তৈরির সহায়ক: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন RCP-005)
@@ -1805,6 +1806,7 @@ const menuItems = [
   { icon:"🖩", label:"ক্যালকুলেটর" },
   { icon:"📞", label:"যোগাযোগ" },
   { icon:"📝", label:"চেঞ্জলগ" },
+  { icon:"🍳", label:"রান্নাঘর ও মিল" },
 ];
 
 // ──────────────────────── PAGE ROUTER ────────────────────────
@@ -1828,6 +1830,7 @@ function PageContent({ index, onDashboard }) {
     case 14: return <Calculator/>;
     case 15: return <Helpline/>;
     case 16: return <Changelog/>;
+    case 17: return <KitchenModule/>;
     default: return <Dashboard/>;
   }
 }
@@ -1838,9 +1841,11 @@ export default function App() {
   const [activeMenu, setActiveMenu] = useState(-1);
   const [fabOpen, setFabOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [navSeq, setNavSeq] = useState(0); // প্রতি মেনু-ক্লিকে বাড়ে → পেজ fresh রিমাউন্ট
 
   const goTo = (menuIndex) => {
     setActiveMenu(menuIndex);
+    setNavSeq(n => n + 1);
     setFabOpen(false);
   };
 
@@ -1904,7 +1909,7 @@ export default function App() {
 
         {/* Content */}
         <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-          <PageContent index={activeMenu}/>
+          <PageContent index={activeMenu} key={navSeq}/>
           {/* Footer */}
           <div style={{ borderTop:"1px solid #E8ECEF", marginTop:8, padding:"16px 0", textAlign:"center" }}>
             <div style={{ fontSize:13, color:"#78909C" }}>© {new Date().getFullYear()} মাদরাসাতুল আযহার আল-আরাবিয়া। সর্বস্বত্ব সংরক্ষিত।</div>

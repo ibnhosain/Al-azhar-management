@@ -6,6 +6,7 @@ const teachers = require("./teachers.ipc.cjs");
 const attendance = require("./attendance.ipc.cjs");
 const boardingBazar = require("./boardingBazar.ipc.cjs");
 const backupIpc = require("./backup.ipc.cjs");
+const kitchen = require("./kitchen.ipc.cjs");
 const { registerCrud } = require("./crud.ipc.cjs");
 const repos = require("../db/repositories/index.cjs");
 const boardingExpenseRepo = require("../db/repositories/boardingExpense.repo.cjs");
@@ -30,6 +31,9 @@ function registerIpc() {
 
   // ব্যাকআপ / রিস্টোর / লোকেশন
   backupIpc.register();
+
+  // Kitchen & Meal (Phase 1)
+  kitchen.register();
 }
 
 module.exports = { registerIpc };

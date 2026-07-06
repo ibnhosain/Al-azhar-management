@@ -43,6 +43,18 @@ export async function webCall(channel, payload) {
     return { web: true, unsupported: true };
   }
 
+  // Kitchen — ওয়েবে সীমিত (Electron-primary)
+  if (resource === "meal_profile") {
+    if (action === "list") return [];
+    if (action === "get") return null;
+    if (action === "upsert") return (payload && payload.data) || {};
+    return null;
+  }
+  if (resource === "meal_list") {
+    if (action === "generate") return { rows: [], summary: { total: 0, home: 0, paused: 0, sick: 0 }, holiday: null };
+    return {};
+  }
+
   // বোর্ডিং বাজার (custom — header + items)
   if (resource === "boarding_bazar") {
     const b = bazarStore;

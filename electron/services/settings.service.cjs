@@ -36,6 +36,11 @@ function loadSettings() {
   return cache;
 }
 
+// ক্যাশ পরিষ্কার (রিস্টোরের পর config ফাইল থেকে নতুন করে পড়তে)।
+function reset() {
+  cache = null;
+}
+
 function saveSettings(patch) {
   cache = { ...loadSettings(), ...patch };
   writeConfigFile(cache);
@@ -69,6 +74,7 @@ function ensureDbDirectory() {
 module.exports = {
   loadSettings,
   saveSettings,
+  reset,
   getDbDirectory,
   setDbDirectory,
   ensureDbDirectory,

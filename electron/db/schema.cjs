@@ -139,6 +139,45 @@ const migrations = [
       );
     }
   },
+
+  // ── v6: Kitchen & Meal — student meal profiles + holidays + meal pauses ──
+  function v6(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS student_meal_profiles (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id     INTEGER UNIQUE REFERENCES students(id) ON DELETE CASCADE,
+        take_breakfast TEXT NOT NULL DEFAULT '1',
+        take_lunch     TEXT NOT NULL DEFAULT '1',
+        take_dinner    TEXT NOT NULL DEFAULT '1',
+        home_food      TEXT NOT NULL DEFAULT '0',
+        meal_status    TEXT NOT NULL DEFAULT 'active',
+        diet_type      TEXT DEFAULT 'normal',
+        allergy        TEXT,
+        note           TEXT,
+        photo_path     TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+    `);
+    const entities = require("./entities.cjs");
+    for (const table of ["holidays", "meal_pauses"]) {
+      const columns = entities[table];
+      if (!columns) continue;
+      const cols = columns.map((c) => `        ${c} TEXT`).join(",\n");
+      db.exec(
+        `CREATE TABLE IF NOT EXISTS ${table} (\n` +
+          `        id INTEGER PRIMARY KEY AUTOINCREMENT,\n` +
+          `${cols},\n` +
+          `        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))\n` +
+          `      );`
+      );
+    }
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(h_date);
+      CREATE INDEX IF NOT EXISTS idx_pause_dates ON meal_pauses(from_date, to_date);
+      CREATE INDEX IF NOT EXISTS idx_pause_code ON meal_pauses(student_code);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

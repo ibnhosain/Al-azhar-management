@@ -21,6 +21,7 @@
     "electron:build": "npm run electron:vite && electron-builder"
   },
   "dependencies": {
+    "adm-zip": "^0.5.18",
     "node-sqlite3-wasm": "^0.8.59",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

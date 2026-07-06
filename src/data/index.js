@@ -37,3 +37,9 @@ export const academicResults = makeCrud("academic_results");
 export const examRoutine = makeCrud("exam_routine");
 export const promotions = makeCrud("promotions");
 export const staff = makeCrud("staff");
+
+// schema v6 — Kitchen & Meal
+export { mealProfiles } from "./mealProfiles";
+export { mealList } from "./mealList";
+export const holidays = makeCrud("holidays");
+export const mealPauses = makeCrud("meal_pauses");

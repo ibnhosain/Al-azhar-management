@@ -27,9 +27,14 @@ function getDbFilePath(dbDir) {
   return path.join(dbDir, DB_FILENAME);
 }
 
-// ব্যাকআপ ফোল্ডার (Step 5-এ ব্যবহৃত হবে)।
+// ব্যাকআপ ফোল্ডার।
 function getBackupDir(dbDir) {
   return path.join(dbDir, "backups");
+}
+
+// ছাত্র/মিল ছবির ফোল্ডার (DB-র পাশে; ব্যাকআপেও অন্তর্ভুক্ত হবে)।
+function getPhotosDir(dbDir) {
+  return path.join(dbDir, "photos");
 }
 
 module.exports = {
@@ -40,4 +45,5 @@ module.exports = {
   getConfigFilePath,
   getDbFilePath,
   getBackupDir,
+  getPhotosDir,
 };

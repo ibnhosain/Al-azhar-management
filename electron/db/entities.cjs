@@ -26,4 +26,8 @@ module.exports = {
   exam_routine:     ["exam_date", "day", "subject", "time_slot", "class"],
   promotions:       ["student", "from_class", "to_class", "year", "status"],
   staff:            ["name", "role", "phone", "status"],
+
+  // Kitchen & Meal (schema v6) — auto CRUD; student_meal_profiles আলাদা (custom repo)
+  holidays:    ["h_date", "holiday_type", "title", "off_breakfast", "off_lunch", "off_dinner", "note"],
+  meal_pauses: ["student_code", "student_name", "from_date", "to_date", "reason", "note"],
 };
