@@ -13,6 +13,7 @@ function register() {
   ipcMain.handle("backup:restore", (_e, p) => backup.restoreBackup(p));
   ipcMain.handle("backup:delete", (_e, p) => backup.deleteBackup(p));
   ipcMain.handle("backup:setAuto", (_e, enabled) => backup.setAutoBackup(enabled));
+  ipcMain.handle("backup:completeSetup", () => backup.completeSetup());
   ipcMain.handle("backup:openFolder", () => { shell.openPath(backup.ensureBackupDir()); return { ok: true }; });
 
   ipcMain.handle("backup:chooseDir", async () => {

@@ -109,12 +109,19 @@ function getInfo() {
     autoBackup: s.autoBackup,
     autoBackupIntervalHours: s.autoBackupIntervalHours,
     lastBackupAt: s.lastBackupAt,
+    setupComplete: s.setupComplete,
     backupCount: listBackups().length,
     dbSize,
   };
 }
 
+// প্রথম-রান সেটআপ সম্পন্ন চিহ্নিত করা
+function completeSetup() {
+  settings.saveSettings({ setupComplete: true });
+  return getInfo();
+}
+
 module.exports = {
   ensureBackupDir, createBackup, listBackups, deleteBackup, restoreBackup,
-  autoBackupIfDue, setAutoBackup, changeDbLocation, getInfo,
+  autoBackupIfDue, setAutoBackup, changeDbLocation, getInfo, completeSetup,
 };

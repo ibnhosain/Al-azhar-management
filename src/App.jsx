@@ -4,6 +4,7 @@ import {
   students as studentsApi, teachers as teachersApi, receipts as receiptsApi,
   expenses as expensesApi, notices as noticesApi,
   sponsors as sponsorsApi, loans as loansApi, orphans as orphansApi,
+  academicResults as resultsApi, examRoutine as routineApi, promotions as promotionsApi, staff as staffApi,
   attendance as attendanceApi, environment, seedResource,
 } from "./data";
 import BoardingModule from "./modules/boarding/BoardingModule";
@@ -1377,20 +1378,18 @@ function Academic() {
   const tabs = ["ফলাফল","পরীক্ষার রুটিন","এডমিট কার্ড"];
 
   // ── ফলাফল ──
-  const [results, setResults] = useState([
-    { student:"মোঃ আরিফ হোসেন", class:"নার্সারি গ্রুপ", roll:"০১", bangla:85, arabic:90, math:78, total:253, grade:"A+" },
-    { student:"ফাতেমা বেগম",      class:"১ম শ্রেণি",     roll:"০২", bangla:72, arabic:80, math:68, total:220, grade:"A"  },
-    { student:"মোঃ রাফি আহমেদ",  class:"২য় শ্রেণি",    roll:"০৩", bangla:60, arabic:70, math:55, total:185, grade:"B"  },
-  ]);
+  const [results, setResults] = useState([]);
   const [resModal, setResModal] = useState(false);
   const [resForm, setResForm] = useState({ student:"", class:"নার্সারি গ্রুপ", roll:"", bangla:"", arabic:"", math:"" });
-  const saveResult = () => {
+  const reloadResults = async () => setResults(await resultsApi.list());
+  const saveResult = async () => {
     if (!resForm.student) return alert("নাম আবশ্যক");
     const t = (Number(resForm.bangla)||0)+(Number(resForm.arabic)||0)+(Number(resForm.math)||0);
     const g = t>=270?"A+":t>=240?"A":t>=210?"A-":t>=180?"B+":t>=150?"B":"C";
-    setResults([...results, { ...resForm, bangla:Number(resForm.bangla)||0, arabic:Number(resForm.arabic)||0, math:Number(resForm.math)||0, total:t, grade:g }]);
+    await resultsApi.create({ ...resForm, bangla:Number(resForm.bangla)||0, arabic:Number(resForm.arabic)||0, math:Number(resForm.math)||0, total:t, grade:g });
     setResModal(false);
     setResForm({ student:"", class:"নার্সারি গ্রুপ", roll:"", bangla:"", arabic:"", math:"" });
+    await reloadResults();
   };
   const gradeColor = {"A+":"#2E7D32","A":"#4CAF50","A-":"#8BC34A","B+":"#FFC107","B":"#FF9800","C":"#F44336"};
 
@@ -1426,21 +1425,41 @@ function Academic() {
   };
 
   // ── পরীক্ষার রুটিন ──
-  const [routine, setRoutine] = useState([
-    { date:"১৫/০৬/২০২৬", day:"রবিবার",   subject:"বাংলা",    time:"সকাল ৯টা–১১টা",   class:"সকল শ্রেণি" },
-    { date:"১৭/০৬/২০২৬", day:"মঙ্গলবার", subject:"আরবি",    time:"সকাল ৯টা–১১টা",   class:"সকল শ্রেণি" },
-    { date:"১৯/০৬/২০২৬", day:"বৃহস্পতিবার",subject:"গণিত",   time:"সকাল ৯টা–১১টা",  class:"সকল শ্রেণি" },
-    { date:"২২/০৬/২০২৬", day:"রবিবার",   subject:"ইসলাম",   time:"সকাল ৯টা–১১টা",   class:"সকল শ্রেণি" },
-    { date:"২৪/০৬/২০২৬", day:"মঙ্গলবার", subject:"ইংরেজি",  time:"সকাল ৯টা–১১টা",   class:"সকল শ্রেণি" },
-  ]);
+  const [routine, setRoutine] = useState([]);
   const [routineModal, setRoutineModal] = useState(false);
   const [routineForm, setRoutineForm] = useState({ date:"", day:"রবিবার", subject:"", time:"", class:"সকল শ্রেণি" });
-  const saveRoutine = () => {
+  const reloadRoutine = async () => {
+    const rows = await routineApi.list();
+    setRoutine(rows.map(r => ({ ...r, date:r.exam_date, time:r.time_slot })));
+  };
+  const saveRoutine = async () => {
     if (!routineForm.subject || !routineForm.date) return alert("তারিখ ও বিষয় আবশ্যক");
-    setRoutine([...routine, routineForm]);
+    await routineApi.create({ exam_date:routineForm.date, day:routineForm.day, subject:routineForm.subject, time_slot:routineForm.time, class:routineForm.class });
     setRoutineModal(false);
     setRoutineForm({ date:"", day:"রবিবার", subject:"", time:"", class:"সকল শ্রেণি" });
+    await reloadRoutine();
   };
+  const delRoutine = async (id) => { await routineApi.remove(id); await reloadRoutine(); };
+
+  // প্রথম লোড: ফলাফল ও রুটিন (ওয়েবে seed)
+  useEffect(() => {
+    (async () => {
+      if (environment === "web") {
+        seedResource("academic_results", [
+          { student:"মোঃ আরিফ হোসেন", class:"নার্সারি গ্রুপ", roll:"০১", bangla:85, arabic:90, math:78, total:253, grade:"A+" },
+          { student:"ফাতেমা বেগম", class:"১ম শ্রেণি", roll:"০২", bangla:72, arabic:80, math:68, total:220, grade:"A" },
+          { student:"মোঃ রাফি আহমেদ", class:"২য় শ্রেণি", roll:"০৩", bangla:60, arabic:70, math:55, total:185, grade:"B" },
+        ]);
+        seedResource("exam_routine", [
+          { exam_date:"১৫/০৬/২০২৬", day:"রবিবার", subject:"বাংলা", time_slot:"সকাল ৯টা–১১টা", class:"সকল শ্রেণি" },
+          { exam_date:"১৭/০৬/২০২৬", day:"মঙ্গলবার", subject:"আরবি", time_slot:"সকাল ৯টা–১১টা", class:"সকল শ্রেণি" },
+          { exam_date:"১৯/০৬/২০২৬", day:"বৃহস্পতিবার", subject:"গণিত", time_slot:"সকাল ৯টা–১১টা", class:"সকল শ্রেণি" },
+        ]);
+      }
+      await reloadResults();
+      await reloadRoutine();
+    })();
+  }, []);
   const printRoutine = () => {
     printHTML(`
       <div style="border:2px solid #2E7D32;border-radius:10px;max-width:600px;margin:auto;overflow:hidden">
@@ -1476,7 +1495,6 @@ function Academic() {
   };
 
   // ── এডমিট কার্ড ──
-  const [admitModal, setAdmitModal] = useState(false);
   const [admitForm, setAdmitForm] = useState({ student:"", class:"নার্সারি গ্রুপ", roll:"", exam:"বার্ষিক পরীক্ষা ২০২৬", center:"মাদরাসাতুল আযহার আল-আরাবিয়া" });
   const printAdmit = (f) => {
     printHTML(`
@@ -1579,7 +1597,7 @@ function Academic() {
                     <td style={td}><strong>{r.date}</strong></td><td style={td}>{r.day}</td>
                     <td style={td}><strong style={{ color:"#1A237E" }}>{r.subject}</strong></td>
                     <td style={td}>{r.time}</td><td style={td}>{r.class}</td>
-                    <td style={td}><button onClick={() => setRoutine(routine.filter((_,j)=>j!==i))} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
+                    <td style={td}><button onClick={() => delRoutine(r.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -1632,10 +1650,24 @@ function Academic() {
 
 // ──────────────────────── PAGE: PROMOTION ────────────────────────
 function Promotion() {
-  const [list, setList] = useState([
-    { student:"মোঃ আরিফ হোসেন", from:"নার্সারি গ্রুপ", to:"১ম শ্রেণি", year:"২০২৬", status:"প্রমোশনপ্রাপ্ত" },
-    { student:"ফাতেমা বেগম", from:"১ম শ্রেণি", to:"২য় শ্রেণি", year:"২০২৬", status:"অপেক্ষমান" },
-  ]);
+  const [list, setList] = useState([]);
+  const reload = async () => {
+    const rows = await promotionsApi.list();
+    setList(rows.map(r => ({ ...r, from:r.from_class, to:r.to_class })));
+  };
+  useEffect(() => {
+    (async () => {
+      if (environment === "web") seedResource("promotions", [
+        { student:"মোঃ আরিফ হোসেন", from_class:"নার্সারি গ্রুপ", to_class:"১ম শ্রেণি", year:"২০২৬", status:"প্রমোশনপ্রাপ্ত" },
+        { student:"ফাতেমা বেগম", from_class:"১ম শ্রেণি", to_class:"২য় শ্রেণি", year:"২০২৬", status:"অপেক্ষমান" },
+      ]);
+      await reload();
+    })();
+  }, []);
+  const approve = async (row) => {
+    await promotionsApi.update(row.id, { student:row.student, from_class:row.from, to_class:row.to, year:row.year, status:"প্রমোশনপ্রাপ্ত" });
+    await reload();
+  };
   return (
     <div>
       <div style={sectionTitle}>প্রমোশন এবং গ্র্যাজুয়েশন</div>
@@ -1646,7 +1678,7 @@ function Promotion() {
             {list.map((l,i) => (
               <tr key={i}><td style={td}>{l.student}</td><td style={td}>{l.from}</td><td style={td}>{l.to}</td><td style={td}>{l.year}</td>
                 <td style={td}><span style={badge(l.status==="প্রমোশনপ্রাপ্ত"?"#4CAF50":"#FFC107")}>{l.status}</span></td>
-                <td style={td}><button onClick={() => setList(list.map((x,j) => j===i?{...x,status:"প্রমোশনপ্রাপ্ত"}:x))} style={{ ...btn(), padding:"4px 10px", fontSize:11 }}>অনুমোদন</button></td>
+                <td style={td}><button onClick={() => approve(l)} style={{ ...btn(), padding:"4px 10px", fontSize:11 }}>অনুমোদন</button></td>
               </tr>
             ))}
           </tbody>
@@ -1658,10 +1690,16 @@ function Promotion() {
 
 // ──────────────────────── PAGE: ADMIN ────────────────────────
 function Admin() {
-  const [staff, setStaff] = useState([
-    { name:"মোঃ আবদুল মতিন", role:"অফিস সহায়ক", phone:"01711-111111", status:"সক্রিয়" },
-    { name:"মোছা. রাহেলা বেগম", role:"হিসাবরক্ষক", phone:"01711-222222", status:"সক্রিয়" },
-  ]);
+  const [staff, setStaff] = useState([]);
+  useEffect(() => {
+    (async () => {
+      if (environment === "web") seedResource("staff", [
+        { name:"মোঃ আবদুল মতিন", role:"অফিস সহায়ক", phone:"01711-111111", status:"সক্রিয়" },
+        { name:"মোছা. রাহেলা বেগম", role:"হিসাবরক্ষক", phone:"01711-222222", status:"সক্রিয়" },
+      ]);
+      setStaff(await staffApi.list());
+    })();
+  }, []);
   return (
     <div>
       <div style={sectionTitle}>প্রশাসনিক বিভাগ</div>

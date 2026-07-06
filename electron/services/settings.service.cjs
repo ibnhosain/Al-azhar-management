@@ -11,9 +11,10 @@ let cache = null;
 
 const DEFAULTS = {
   dbDirectory: paths.DEFAULT_DB_DIR,   // ডিফল্ট: D:\BustanulIslam\Data
-  autoBackup: true,                    // Step 5-এ ব্যবহৃত
-  autoBackupIntervalHours: 24,         // Step 5-এ ব্যবহৃত
+  autoBackup: true,
+  autoBackupIntervalHours: 24,
   lastBackupAt: null,
+  setupComplete: false,                // প্রথম-রান সেটআপ শেষ হয়েছে কিনা
 };
 
 function readConfigFile() {

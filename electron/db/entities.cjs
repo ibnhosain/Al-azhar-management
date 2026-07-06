@@ -20,4 +20,10 @@ module.exports = {
   meals:           ["date", "meal_type", "menu", "cost", "notes"],
   leaves:          ["code", "student", "from_date", "to_date", "reason", "status"],
   visitors:        ["code", "visitor_name", "phone", "purpose", "meeting_with", "date", "in_time", "out_time"],
+
+  // Academic / Promotion / Admin (schema v5) — SQL কীওয়ার্ড এড়াতে from_class/to_class/exam_date/time_slot
+  academic_results: ["student", "class", "roll", "bangla", "arabic", "math", "total", "grade"],
+  exam_routine:     ["exam_date", "day", "subject", "time_slot", "class"],
+  promotions:       ["student", "from_class", "to_class", "year", "status"],
+  staff:            ["name", "role", "phone", "status"],
 };

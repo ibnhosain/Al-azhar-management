@@ -122,6 +122,23 @@ const migrations = [
       );
     }
   },
+
+  // ── v5: Academic / Promotion / Admin ──
+  function v5(db) {
+    const entities = require("./entities.cjs");
+    for (const table of ["academic_results", "exam_routine", "promotions", "staff"]) {
+      const columns = entities[table];
+      if (!columns) continue;
+      const cols = columns.map((c) => `        ${c} TEXT`).join(",\n");
+      db.exec(
+        `CREATE TABLE IF NOT EXISTS ${table} (\n` +
+          `        id INTEGER PRIMARY KEY AUTOINCREMENT,\n` +
+          `${cols},\n` +
+          `        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))\n` +
+          `      );`
+      );
+    }
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

@@ -31,3 +31,9 @@ export const bedAllocations = makeCrud("bed_allocations");
 export const meals = makeCrud("meals");
 export const leaves = makeCrud("leaves");
 export const visitors = makeCrud("visitors");
+
+// schema v5 — Academic / Promotion / Admin
+export const academicResults = makeCrud("academic_results");
+export const examRoutine = makeCrud("exam_routine");
+export const promotions = makeCrud("promotions");
+export const staff = makeCrud("staff");

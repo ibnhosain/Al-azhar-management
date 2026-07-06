@@ -10,6 +10,7 @@ export const backup = {
   restore: (p) => call("backup:restore", p),
   remove: (p) => call("backup:delete", p),
   setAuto: (enabled) => call("backup:setAuto", enabled),
+  completeSetup: () => call("backup:completeSetup"),
   openFolder: () => call("backup:openFolder"),
   chooseDir: () => call("backup:chooseDir"),
   exportTo: () => call("backup:exportTo"),

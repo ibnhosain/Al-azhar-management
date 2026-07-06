@@ -64,6 +64,26 @@ const seedData = {
     { date: "2026-07-06", meal_type: "দুপুর", menu: "ভাত, মাছ, ডাল, সবজি", cost: "3500", notes: "" },
     { date: "2026-07-06", meal_type: "রাত", menu: "ভাত, ডিম, ভর্তা", cost: "2500", notes: "" },
   ],
+  academic_results: [
+    { student: "মোঃ আরিফ হোসেন", class: "নার্সারি গ্রুপ", roll: "০১", bangla: "85", arabic: "90", math: "78", total: "253", grade: "A+" },
+    { student: "ফাতেমা বেগম", class: "১ম শ্রেণি", roll: "০২", bangla: "72", arabic: "80", math: "68", total: "220", grade: "A" },
+    { student: "মোঃ রাফি আহমেদ", class: "২য় শ্রেণি", roll: "০৩", bangla: "60", arabic: "70", math: "55", total: "185", grade: "B" },
+  ],
+  exam_routine: [
+    { exam_date: "১৫/০৬/২০২৬", day: "রবিবার", subject: "বাংলা", time_slot: "সকাল ৯টা–১১টা", class: "সকল শ্রেণি" },
+    { exam_date: "১৭/০৬/২০২৬", day: "মঙ্গলবার", subject: "আরবি", time_slot: "সকাল ৯টা–১১টা", class: "সকল শ্রেণি" },
+    { exam_date: "১৯/০৬/২০২৬", day: "বৃহস্পতিবার", subject: "গণিত", time_slot: "সকাল ৯টা–১১টা", class: "সকল শ্রেণি" },
+    { exam_date: "২২/০৬/২০২৬", day: "রবিবার", subject: "ইসলাম", time_slot: "সকাল ৯টা–১১টা", class: "সকল শ্রেণি" },
+    { exam_date: "২৪/০৬/২০২৬", day: "মঙ্গলবার", subject: "ইংরেজি", time_slot: "সকাল ৯টা–১১টা", class: "সকল শ্রেণি" },
+  ],
+  promotions: [
+    { student: "মোঃ আরিফ হোসেন", from_class: "নার্সারি গ্রুপ", to_class: "১ম শ্রেণি", year: "২০২৬", status: "প্রমোশনপ্রাপ্ত" },
+    { student: "ফাতেমা বেগম", from_class: "১ম শ্রেণি", to_class: "২য় শ্রেণি", year: "২০২৬", status: "অপেক্ষমান" },
+  ],
+  staff: [
+    { name: "মোঃ আবদুল মতিন", role: "অফিস সহায়ক", phone: "01711-111111", status: "সক্রিয়" },
+    { name: "মোছা. রাহেলা বেগম", role: "হিসাবরক্ষক", phone: "01711-222222", status: "সক্রিয়" },
+  ],
 };
 
 function insertRow(db, table, row) {
