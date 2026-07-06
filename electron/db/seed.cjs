@@ -55,6 +55,15 @@ const seedData = {
     { code: "ORP-001", orphan: "মোঃ সাইফুল ইসলাম", sponsor: "হাজী মোঃ করিম", amount: "৳১,০০০", month: "জুন ২০২৬", status: "পরিশোধিত" },
     { code: "ORP-002", orphan: "মোছা. হালিমা বেগম", sponsor: "মোঃ রহিম উদ্দিন", amount: "৳৮০০", month: "জুন ২০২৬", status: "বকেয়া" },
   ],
+  rooms: [
+    { room_no: "A-১০১", floor: "১ম তলা", capacity: "৪", type: "আবাসিক", status: "সক্রিয়" },
+    { room_no: "A-১০২", floor: "১ম তলা", capacity: "৪", type: "আবাসিক", status: "সক্রিয়" },
+    { room_no: "B-২০১", floor: "২য় তলা", capacity: "৬", type: "আবাসিক", status: "সক্রিয়" },
+  ],
+  meals: [
+    { date: "2026-07-06", meal_type: "দুপুর", menu: "ভাত, মাছ, ডাল, সবজি", cost: "3500", notes: "" },
+    { date: "2026-07-06", meal_type: "রাত", menu: "ভাত, ডিম, ভর্তা", cost: "2500", notes: "" },
+  ],
 };
 
 function insertRow(db, table, row) {
@@ -66,6 +75,47 @@ function insertRow(db, table, row) {
   );
 }
 
+// Boarding module ডেমো ডেটা (header+items সহ বাজার — তাই আলাদা)
+function seedBoarding(db) {
+  if (db.get("SELECT COUNT(*) AS c FROM boarding_bazar").c === 0) {
+    const purchases = [
+      { date: "2026-07-03", fund: "বোর্ডিং", by: "পরিচালক", items: [{ n: "কাচা বাজার (ডিম, তেল, আলু, পেঁয়াজ)", u: "মিশ্র", q: 1, p: 1710 }] },
+      { date: "2026-06-30", fund: "বোর্ডিং", by: "পরিচালক", items: [{ n: "চাল", u: "৫০ কেজি", q: 1, p: 2000 }] },
+      { date: "2026-06-30", fund: "বোর্ডিং", by: "পরিচালক", items: [{ n: "বিরিয়ানির বাজার", u: "মিশ্র", q: 1, p: 1100 }] },
+      { date: "2026-06-27", fund: "বোর্ডিং", by: "পরিচালক", items: [{ n: "মাছ", u: "কেজি", q: 10, p: 55 }] },
+    ];
+    let no = 0;
+    for (const pur of purchases) {
+      const total = pur.items.reduce((s, i) => s + i.q * i.p, 0);
+      const res = db.run(
+        "INSERT INTO boarding_bazar (purchase_no, date, fund, purchased_by, total) VALUES (?, ?, ?, ?, ?)",
+        [String(++no), pur.date, pur.fund, pur.by, total]
+      );
+      const id = Number(res.lastInsertRowid);
+      for (const it of pur.items) {
+        db.run(
+          "INSERT INTO boarding_bazar_items (bazar_id, item_name, unit, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)",
+          [id, it.n, it.u, it.q, it.p, it.q * it.p]
+        );
+      }
+    }
+  }
+
+  if (db.get("SELECT COUNT(*) AS c FROM boarding_expense").c === 0) {
+    const exps = [
+      { expense_no: "1", date: "2026-07-01", category: "গ্যাস", description: "রান্নার গ্যাস", amount: 1200, paid_by: "পরিচালক", approved_by: "প্রধান শিক্ষক" },
+      { expense_no: "2", date: "2026-07-02", category: "বিদ্যুৎ", description: "বিদ্যুৎ বিল", amount: 900, paid_by: "পরিচালক", approved_by: "প্রধান শিক্ষক" },
+      { expense_no: "3", date: "2026-07-03", category: "পরিষ্কার", description: "পরিষ্কার সামগ্রী", amount: 300, paid_by: "পরিচালক", approved_by: "" },
+    ];
+    for (const e of exps) {
+      db.run(
+        "INSERT INTO boarding_expense (expense_no, date, category, description, amount, paid_by, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [e.expense_no, e.date, e.category, e.description, e.amount, e.paid_by, e.approved_by]
+      );
+    }
+  }
+}
+
 function seedIfEmpty(db) {
   for (const [table, rows] of Object.entries(seedData)) {
     const count = db.get(`SELECT COUNT(*) AS c FROM ${table}`).c;
@@ -73,6 +123,7 @@ function seedIfEmpty(db) {
       for (const row of rows) insertRow(db, table, row);
     }
   }
+  seedBoarding(db);
 }
 
 module.exports = { seedIfEmpty, seedData };

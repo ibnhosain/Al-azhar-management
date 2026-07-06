@@ -1,0 +1,37 @@
+# ────────────────────────────────────────────────────────────────
+#  electron-builder.yml — Windows Installer (.exe) কনফিগ।
+#  node-sqlite3-wasm WASM (native নয়) → rebuild লাগে না, প্যাকেজিং পরিষ্কার।
+#  DB ইনস্টল ফোল্ডারের বাইরে (D:\BustanulIslam\Data / userData) → আপডেটে নিরাপদ।
+# ────────────────────────────────────────────────────────────────
+appId: space.easycoding.madrasa
+productName: Madrasa Management
+copyright: © 2026 Easy Coding Space
+
+directories:
+  output: release
+  buildResources: build
+
+# রেন্ডার bundle (dist), main-process (electron), package.json।
+# production node_modules (node-sqlite3-wasm সহ) electron-builder স্বয়ংক্রিয়ভাবে যুক্ত করে।
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+
+# WASM ফাইল asar-এর বাইরে রাখা (নিরাপদ লোডিং)
+asarUnpack:
+  - "**/node_modules/node-sqlite3-wasm/**"
+
+win:
+  target:
+    - nsis
+  # icon: build/icon.ico   # নিজস্ব আইকন যোগ করলে এই লাইন আনকমেন্ট করুন
+
+nsis:
+  oneClick: false                          # কাস্টম ইনস্টলার (এক-ক্লিক নয়)
+  perMachine: false                        # প্রতি-ব্যবহারকারী ইনস্টল (এডমিন লাগে না)
+  allowToChangeInstallationDirectory: true # ইনস্টল ফোল্ডার বেছে নেওয়া যাবে
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Madrasa Management
+  artifactName: MadrasaManagement-Setup-${version}.${ext}

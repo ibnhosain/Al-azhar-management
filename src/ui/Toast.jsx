@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { colors, radius, shadow, font, zIndex } from "./theme";
-
-const ToastCtx = createContext(null);
+import { ToastCtx } from "./ToastContext";
 
 const TYPES = {
   success: { color: colors.success, icon: "✅" },
@@ -68,10 +67,4 @@ export function ToastProvider({ children }) {
       </div>
     </ToastCtx.Provider>
   );
-}
-
-export function useToast() {
-  const ctx = useContext(ToastCtx);
-  if (!ctx) throw new Error("useToast must be used within <ToastProvider>");
-  return ctx;
 }

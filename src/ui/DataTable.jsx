@@ -69,8 +69,6 @@ export default function DataTable({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  useEffect(() => { setPage(1); }, [query, pageSize]);
-
   const visibleCols = columns.filter((c) => !hidden[c.key]);
 
   const filtered = useMemo(() => {
@@ -145,7 +143,7 @@ export default function DataTable({
         {title && <div style={{ fontWeight: font.weight.semibold, color: colors.text, fontSize: font.size.md }}>{title}</div>}
         {pagination && (
           <select
-            value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="uk-input"
+            value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="uk-input"
             style={{ padding: "6px 8px", borderRadius: radius.sm, border: `1px solid ${colors.border}`, fontSize: font.size.sm, cursor: "pointer", fontFamily: font.family }}
           >
             {pageSizeOptions.map((n) => <option key={n} value={n}>{toBn(n)} / পৃষ্ঠা</option>)}
@@ -184,7 +182,7 @@ export default function DataTable({
           {actions}
           {searchable && (
             <input
-              value={query} onChange={(e) => setQuery(e.target.value)} placeholder={searchPlaceholder} className="uk-input"
+              value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder={searchPlaceholder} className="uk-input"
               style={{ padding: "7px 12px", border: `1px solid ${colors.border}`, borderRadius: radius.md, fontSize: font.size.sm, width: 200, fontFamily: font.family }}
             />
           )}

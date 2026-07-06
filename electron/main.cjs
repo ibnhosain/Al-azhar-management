@@ -7,6 +7,7 @@ const { app, BrowserWindow, dialog } = require("electron");
 const path = require("path");
 const { initDatabase, closeDatabase } = require("./db/connection.cjs");
 const { registerIpc } = require("./ipc/index.cjs");
+const backupService = require("./services/backup.service.cjs");
 
 // dev মোডে Vite সার্ভারের URL এখানে থাকবে; প্রোডাকশনে থাকবে না।
 const DEV_SERVER_URL = process.env.ELECTRON_START_URL;
@@ -64,6 +65,7 @@ if (!gotLock) {
     try {
       initDatabase();
       registerIpc();
+      try { backupService.autoBackupIfDue(); } catch { /* অটো-ব্যাকআপ ব্যর্থ হলেও অ্যাপ চলবে */ }
     } catch (err) {
       dialog.showErrorBox(
         "ডেটাবেস চালু করা যায়নি",

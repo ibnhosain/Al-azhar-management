@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   students as studentsApi, teachers as teachersApi, receipts as receiptsApi,
-  expenses as expensesApi, notices as noticesApi, boarding as boardingApi,
+  expenses as expensesApi, notices as noticesApi,
   sponsors as sponsorsApi, loans as loansApi, orphans as orphansApi,
   attendance as attendanceApi, environment, seedResource,
 } from "./data";
+import BoardingModule from "./modules/boarding/BoardingModule";
+import BackupRestore from "./modules/settings/BackupRestore";
 
 // নতুন কোড তৈরির সহায়ক: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন RCP-005)
 function genCode(list, prefix) {
@@ -95,12 +97,7 @@ const initNotices = [
   { id:3, title:"মাসিক বেতন পরিশোধের নোটিশ", date:"০১/০৬/২০২৬", priority:"গুরুত্বপূর্ণ", body:"জুন মাসের বেতন ১০ তারিখের মধ্যে পরিশোধ করতে হবে।" },
 ];
 
-// ──────────────────────── BOARDING DATA ────────────────────────
-const initBoarding = [
-  { id:"BRD-001", name:"মোঃ আরিফ হোসেন", room:"A-১০১", floor:"১ম তলা", fee:"৳৮০০", status:"সক্রিয়" },
-  { id:"BRD-002", name:"মোঃ ইমরান খান", room:"A-১০২", floor:"১ম তলা", fee:"৳৮০০", status:"সক্রিয়" },
-  { id:"BRD-003", name:"মোঃ রাফি আহমেদ", room:"B-২০১", floor:"২য় তলা", fee:"৳৯০০", status:"বকেয়া" },
-];
+// বোর্ডিং ডেমো ডেটা এখন src/modules/boarding/ (BoardingResidents) ও electron/db/seed.cjs-এ।
 
 // ──────────────────────── SPONSORS DATA ────────────────────────
 const initSponsors = [
@@ -983,77 +980,7 @@ function Notices() {
   );
 }
 
-// ──────────────────────── PAGE: BOARDING ────────────────────────
-function Boarding() {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ name:"", room:"", floor:"", fee:"", status:"সক্রিয়" });
-
-  const reload = async () => { setList(await boardingApi.list()); setLoading(false); };
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (environment === "web") {
-        seedResource("boarding", initBoarding.map(b => ({
-          code:b.id, name:b.name, room:b.room, floor:b.floor, fee:b.fee, status:b.status,
-        })));
-      }
-      const rows = await boardingApi.list();
-      if (alive) { setList(rows); setLoading(false); }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  const save = async () => {
-    if (!form.name || !form.room) return alert("নাম ও রুম নম্বর আবশ্যক");
-    await boardingApi.create({ ...form, code: genCode(list, "BRD") });
-    setModal(false);
-    setForm({ name:"", room:"", floor:"", fee:"", status:"সক্রিয়" });
-    await reload();
-  };
-
-  const del = async (id) => { await boardingApi.remove(id); await reload(); };
-  return (
-    <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-        <div style={sectionTitle}>বোর্ডিং ব্যবস্থাপনা <span style={badge("#9C27B0")}>মোট: {list.length}</span></div>
-        <button onClick={() => setModal(true)} style={btn()}>+ নতুন এন্ট্রি</button>
-      </div>
-      <div style={card}>
-        <table style={tbl}>
-          <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>রুম</th><th style={th}>তলা</th><th style={th}>ফি</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
-          <tbody>
-            {loading ? (
-              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
-            ) : list.length === 0 ? (
-              <tr><td style={td} colSpan={7}>কোনো এন্ট্রি নেই</td></tr>
-            ) : list.map((b) => (
-              <tr key={b.id}><td style={td}>{b.code}</td><td style={td}>{b.name}</td><td style={td}>{b.room}</td><td style={td}>{b.floor}</td><td style={td}>{b.fee}</td>
-                <td style={td}><span style={badge(b.status==="সক্রিয়"?"#4CAF50":"#F44336")}>{b.status}</span></td>
-                <td style={td}><button onClick={() => del(b.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {modal && (
-        <Modal title="বোর্ডিং এন্ট্রি" onClose={() => setModal(false)}>
-          <FormRow label="শিক্ষার্থীর নাম"><input style={inputStyle} value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="নাম"/></FormRow>
-          <FormRow label="রুম নম্বর"><input style={inputStyle} value={form.room} onChange={e => setForm({...form,room:e.target.value})} placeholder="যেমন: A-১০১"/></FormRow>
-          <FormRow label="তলা"><input style={inputStyle} value={form.floor} onChange={e => setForm({...form,floor:e.target.value})} placeholder="যেমন: ১ম তলা"/></FormRow>
-          <FormRow label="মাসিক ফি"><input style={inputStyle} value={form.fee} onChange={e => setForm({...form,fee:e.target.value})} placeholder="যেমন: ৳৮০০"/></FormRow>
-          <FormRow label="অবস্থা"><select style={inputStyle} value={form.status} onChange={e => setForm({...form,status:e.target.value})}><option>সক্রিয়</option><option>বকেয়া</option><option>নিষ্ক্রিয়</option></select></FormRow>
-          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
-            <button onClick={() => setModal(false)} style={btn("#9E9E9E")}>বাতিল</button>
-            <button onClick={save} style={btn()}>সংরক্ষণ করুন</button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
+// বোর্ডিং পেজ এখন পূর্ণাঙ্গ মডিউল: src/modules/boarding/BoardingModule.jsx
 
 // ──────────────────────── PAGE: SPONSORS ────────────────────────
 function Sponsors() {
@@ -1332,9 +1259,13 @@ const SvgIcon = ({ d, d2, viewBox="0 0 24 24" }) => (
 
 function Settings() {
   const [activeModal, setActiveModal] = useState(null);
+  const [backupOpen, setBackupOpen] = useState(false);
   const [siteForm, setSiteForm] = useState({ instituteName:"মাদরাসাতুল আযহার আল-আরাবিয়া", address:"সদর, ময়মনসিংহ", phone:"01747-658744", email:"", academicYear:"২০২৬", currency:"৳" });
   const [saved, setSaved] = useState(false);
   const saveSite = () => { setSaved(true); setTimeout(()=>{ setSaved(false); setActiveModal(null); },1500); };
+
+  // ব্যাকআপ ও রিস্টোর — পূর্ণ পেজ (kit UI)
+  if (backupOpen) return <BackupRestore onBack={() => setBackupOpen(false)} />;
 
   const settingCards = [
     { id:"site",     emoji:"🗄️",  label:"সাইট সেটিংস" },
@@ -1353,6 +1284,7 @@ function Settings() {
     { id:"section",  emoji:"▦",   label:"সেকশন" },
     { id:"subject",  emoji:"📄",  label:"পাঠ্যবিষয় সমূহ" },
     { id:"sub_asgn", emoji:"📖",  label:"পাঠ্যবিষয় বরাদ্দ" },
+    { id:"backup",   emoji:"💾",  label:"ব্যাকআপ ও রিস্টোর" },
     { id:"delete",   emoji:"🗑️",  label:"ডেটা ডিলিট সেটিং" },
     { id:"license",  emoji:"🪪",  label:"লাইসেন্স সেটিংস" },
     { id:"form",     emoji:"📝",  label:"ভর্তি ফর্ম" },
@@ -1390,7 +1322,7 @@ function Settings() {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
         {settingCards.map(c => (
           <div key={c.id}
-            onClick={() => setActiveModal(c.id)}
+            onClick={() => (c.id === "backup" ? setBackupOpen(true) : setActiveModal(c.id))}
             style={cardBase}
             onMouseEnter={e => { e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.13)"; e.currentTarget.style.transform="translateY(-2px)"; }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow="none"; e.currentTarget.style.transform="translateY(0)"; }}>
@@ -1853,7 +1785,7 @@ function PageContent({ index, onDashboard }) {
     case 9: return <Sponsors/>;
     case 10: return <Loans/>;
     case 11: return <OrphanSponsors/>;
-    case 12: return <Boarding/>;
+    case 12: return <BoardingModule/>;
     case 13: return <Notices/>;
     case 14: return <Calculator/>;
     case 15: return <Helpline/>;

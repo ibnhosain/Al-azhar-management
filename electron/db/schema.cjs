@@ -62,6 +62,66 @@ const migrations = [
       );
     `);
   },
+
+  // ── v3: Boarding module — বাজার (header+items) ও খরচ (amount REAL, যাতে যোগফল হয়) ──
+  function v3(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS boarding_expense (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_no     TEXT,
+        date           TEXT,
+        category       TEXT,
+        description    TEXT,
+        amount         REAL NOT NULL DEFAULT 0,
+        paid_by        TEXT,
+        approved_by    TEXT,
+        remarks        TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS boarding_bazar (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchase_no    TEXT,
+        date           TEXT,
+        fund           TEXT,
+        purchased_by   TEXT,
+        remarks        TEXT,
+        total          REAL NOT NULL DEFAULT 0,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS boarding_bazar_items (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        bazar_id   INTEGER NOT NULL REFERENCES boarding_bazar(id) ON DELETE CASCADE,
+        item_name  TEXT,
+        unit       TEXT,
+        quantity   REAL NOT NULL DEFAULT 0,
+        unit_price REAL NOT NULL DEFAULT 0,
+        subtotal   REAL NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_bazar_items_bazar ON boarding_bazar_items(bazar_id);
+    `);
+  },
+
+  // ── v4: Boarding sub-modules (rooms, beds, allocation, meals, leaves, visitors) ──
+  //  entities config থেকে (existing DB-র জন্য; fresh DB v2-তেই তৈরি হয়)।
+  function v4(db) {
+    const entities = require("./entities.cjs");
+    for (const table of ["rooms", "beds", "bed_allocations", "meals", "leaves", "visitors"]) {
+      const columns = entities[table];
+      if (!columns) continue;
+      const cols = columns.map((c) => `        ${c} TEXT`).join(",\n");
+      db.exec(
+        `CREATE TABLE IF NOT EXISTS ${table} (\n` +
+          `        id INTEGER PRIMARY KEY AUTOINCREMENT,\n` +
+          `${cols},\n` +
+          `        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))\n` +
+          `      );`
+      );
+    }
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

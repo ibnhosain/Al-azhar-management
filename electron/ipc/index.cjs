@@ -4,8 +4,11 @@
 const students = require("./students.ipc.cjs");
 const teachers = require("./teachers.ipc.cjs");
 const attendance = require("./attendance.ipc.cjs");
+const boardingBazar = require("./boardingBazar.ipc.cjs");
+const backupIpc = require("./backup.ipc.cjs");
 const { registerCrud } = require("./crud.ipc.cjs");
 const repos = require("../db/repositories/index.cjs");
+const boardingExpenseRepo = require("../db/repositories/boardingExpense.repo.cjs");
 
 function registerIpc() {
   // schema v1 এন্টিটি (আলাদা repo)
@@ -18,8 +21,15 @@ function registerIpc() {
     registerCrud(resource, repo);
   }
 
+  // schema v3 — Boarding module
+  registerCrud("boarding_expense", boardingExpenseRepo);
+  boardingBazar.register();
+
   // দৈনিক হাজিরা (custom চ্যানেল)
   attendance.register();
+
+  // ব্যাকআপ / রিস্টোর / লোকেশন
+  backupIpc.register();
 }
 
 module.exports = { registerIpc };

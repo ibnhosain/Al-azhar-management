@@ -1,7 +1,9 @@
 {
   "name": "madrasa-dashboard",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Madrasa Management — offline desktop ERP (মাদরাসা ব্যবস্থাপনা)",
+  "author": "Easy Coding Space",
   "type": "module",
   "main": "electron/main.cjs",
   "homepage": "https://ibnhosain.github.io/Al-azhar-management",
@@ -13,7 +15,10 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "electron:start": "wait-on tcp:127.0.0.1:5173 && cross-env ELECTRON_START_URL=http://localhost:5173/Al-azhar-management/ electron .",
-    "electron:dev": "concurrently -k -n vite,electron -c green,cyan \"vite --port 5173 --strictPort\" \"npm:electron:start\""
+    "electron:dev": "concurrently -k -n vite,electron -c green,cyan \"vite --port 5173 --strictPort\" \"npm:electron:start\"",
+    "electron:vite": "cross-env BUILD_TARGET=electron vite build",
+    "electron:pack": "npm run electron:vite && electron-builder --dir",
+    "electron:build": "npm run electron:vite && electron-builder"
   },
   "dependencies": {
     "node-sqlite3-wasm": "^0.8.59",
