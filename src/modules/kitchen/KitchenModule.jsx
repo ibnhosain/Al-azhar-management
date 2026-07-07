@@ -4,18 +4,35 @@ import MealList from "./MealList";
 import MealProfiles from "./MealProfiles";
 import MealPause from "./MealPause";
 import HolidayPage from "./HolidayPage";
+import Ingredients from "./Ingredients";
+import Dishes from "./Dishes";
+import Recipes from "./Recipes";
+import MenuPlanner from "./MenuPlanner";
+import IngredientCalculator from "./IngredientCalculator";
+import KitchenReports from "./KitchenReports";
+import KitchenDashboard from "./KitchenDashboard";
+import KitchenStore from "./KitchenStore";
+import Purchases from "./Purchases";
+import Suppliers from "./Suppliers";
+import MarketPlanner from "./MarketPlanner";
 
 const TILES = [
+  { key: "dashboard", icon: "📊", label: "কিচেন ড্যাশবোর্ড", color: "#2E7D32", desc: "সারসংক্ষেপ + সতর্কতা", C: KitchenDashboard },
   { key: "meal_list", icon: "📋", label: "মিল লিস্ট", color: "#2E7D32", desc: "দৈনিক অটো মিল তালিকা", C: MealList },
   { key: "profiles", icon: "👤", label: "মিল প্রোফাইল", color: "#00838F", desc: "ছাত্রের preference + ছবি", C: MealProfiles },
+  { key: "menu", icon: "🍽️", label: "মেনু প্ল্যানার", color: "#2E7D32", desc: "দৈনিক/সাপ্তাহিক/টেমপ্লেট মেনু", C: MenuPlanner },
+  { key: "calc", icon: "🧮", label: "উপকরণ ক্যালকুলেটর", color: "#6A1B9A", desc: "রেসিপি × মিল সংখ্যা", C: IngredientCalculator },
+  { key: "market", icon: "🛒", label: "মার্কেট প্ল্যানার", color: "#E53935", desc: "প্রয়োজন − স্টক = বাজার", C: MarketPlanner },
+  { key: "dishes", icon: "🍲", label: "পদ ব্যবস্থাপনা", color: "#EF6C00", desc: "রান্নার পদ + ছবি", C: Dishes },
+  { key: "recipes", icon: "📖", label: "রেসিপি", color: "#00838F", desc: "পদের উপকরণ ও নোট", C: Recipes },
+  { key: "ingredients", icon: "🧂", label: "উপকরণ মাস্টার", color: "#558B2F", desc: "উপকরণ, একক ও মূল্য", C: Ingredients },
+  { key: "store", icon: "📦", label: "কিচেন স্টোর", color: "#00838F", desc: "স্টক + কম-স্টক সতর্কতা", C: KitchenStore },
+  { key: "purchase", icon: "🧾", label: "কিচেন ক্রয়", color: "#EF6C00", desc: "ক্রয় → অটো স্টক ইন", C: Purchases },
+  { key: "supplier", icon: "🏪", label: "সরবরাহকারী", color: "#558B2F", desc: "বাজার/দোকান তালিকা", C: Suppliers },
   { key: "pause", icon: "⏸️", label: "মিল বিরতি", color: "#EF6C00", desc: "ছুটি / অসুস্থ / বাড়ি", C: MealPause },
   { key: "holiday", icon: "📅", label: "ছুটির ক্যালেন্ডার", color: "#6A1B9A", desc: "ছুটির দিন মিল বন্ধ", C: HolidayPage },
-  { key: "s1", icon: "📊", label: "কিচেন ড্যাশবোর্ড", color: "#607D8B", desc: "পরবর্তী Phase", soon: true },
-  { key: "s2", icon: "🍽️", label: "মেনু প্ল্যানার", color: "#607D8B", desc: "পরবর্তী Phase", soon: true },
-  { key: "s3", icon: "🧮", label: "উপকরণ ও মার্কেট", color: "#607D8B", desc: "পরবর্তী Phase", soon: true },
-  { key: "s4", icon: "📦", label: "কিচেন স্টোর", color: "#607D8B", desc: "পরবর্তী Phase", soon: true },
+  { key: "reports", icon: "📈", label: "রিপোর্ট", color: "#00838F", desc: "রেসিপি/মেনু/স্টক/কস্ট", C: KitchenReports },
   { key: "s5", icon: "✅", label: "মিল হাজিরা", color: "#607D8B", desc: "পরবর্তী Phase", soon: true },
-  { key: "s6", icon: "📈", label: "রিপোর্ট ও খরচ", color: "#607D8B", desc: "পরবর্তী Phase", soon: true },
 ];
 
 export default function KitchenModule() {

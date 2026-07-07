@@ -54,6 +54,49 @@ export async function webCall(channel, payload) {
     if (action === "generate") return { rows: [], summary: { total: 0, home: 0, paused: 0, sick: 0 }, holiday: null };
     return {};
   }
+  // Phase 2 kitchen — custom-action resources (ingredient/dish use generic CRUD below)
+  if (resource === "recipe") {
+    if (action === "getByDish") return { dish_id: payload, cooking_notes: "", prep_notes: "", special_instruction: "", items: [] };
+    if (action === "saveForDish") return (payload && payload.data) || {};
+    return null;
+  }
+  if (resource === "menu") {
+    if (action === "list" || action === "templates") return [];
+    if (action === "get" || action === "getByDateMeal") return null;
+    if (action === "save" || action === "copy") return payload || {};
+    if (action === "delete") return { id: payload };
+    return null;
+  }
+  if (resource === "ingredient_calc") {
+    if (action === "generate") return { servings: 0, hasMenu: false, menu: null, rows: [], totalCost: 0 };
+    return {};
+  }
+  if (resource === "kitchen_report") {
+    if (action === "cost") return { purchaseValue: 0, consumptionValue: 0, wasteValue: 0, currentStockValue: 0 };
+    return [];
+  }
+  // Phase 3 — store / purchase / market / dashboard
+  if (resource === "store") {
+    if (action === "summary") return { itemCount: 0, lowCount: 0, totalValue: 0, txnCount: 0 };
+    if (action === "add") return payload || {};
+    if (action === "remove") return { id: payload };
+    return []; // balances / low / transactions
+  }
+  if (resource === "purchase") {
+    if (action === "list") return [];
+    if (action === "get") return null;
+    if (action === "create") return payload || {};
+    if (action === "delete") return { id: payload };
+    return null;
+  }
+  if (resource === "market") {
+    if (action === "plan") return { rows: [], totalCost: 0, buyCount: 0 };
+    return {};
+  }
+  if (resource === "kitchen_dash") {
+    if (action === "overview") return { today: "", tomorrow: "", todayMenus: [], tomorrowMenus: [], low: [], store: { itemCount: 0, lowCount: 0, totalValue: 0, txnCount: 0 }, recentPurchases: [], recentTxns: [], counts: { dishes: 0, ingredients: 0, suppliers: 0, menus: 0 } };
+    return {};
+  }
 
   // বোর্ডিং বাজার (custom — header + items)
   if (resource === "boarding_bazar") {

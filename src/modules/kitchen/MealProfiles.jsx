@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { PageHeader, DataTable, Badge, Button, Modal, useToast, SelectField, TextField, TextareaField } from "../../ui";
 import { mealProfiles } from "../../data";
-import { MEALS, DIET_TYPES, resizeImage } from "./constants";
+import { bn, MEALS, DIET_TYPES, resizeImage } from "./constants";
 
 const DIET_COLOR = { normal: "#2E7D32", special: "#EF6C00", sick: "#E53935", vip: "#6A1B9A" };
 const dietLabel = (v) => (DIET_TYPES.find((d) => d.value === v) || DIET_TYPES[0]).label;
@@ -32,6 +32,7 @@ export default function MealProfiles({ nav, icon }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [pf, setPf] = useState("");   // "" সব | "yes" তৈরি | "no" বাকি
   const [modal, setModal] = useState(false);
   const [current, setCurrent] = useState(null);
   const [form, setForm] = useState(EMPTY);
@@ -46,9 +47,15 @@ export default function MealProfiles({ nav, icon }) {
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
-    if (!t) return rows;
-    return rows.filter((r) => [r.name, r.code, r.class, r.room_no].some((v) => String(v || "").toLowerCase().includes(t)));
-  }, [rows, q]);
+    return rows.filter((r) => {
+      if (pf === "yes" && !r.has_profile) return false;
+      if (pf === "no" && r.has_profile) return false;
+      if (!t) return true;
+      return [r.name, r.code, r.class, r.room_no].some((v) => String(v || "").toLowerCase().includes(t));
+    });
+  }, [rows, q, pf]);
+
+  const pendingCount = useMemo(() => rows.filter((r) => !r.has_profile).length, [rows]);
 
   const openEdit = (r) => {
     setCurrent(r);
@@ -90,13 +97,25 @@ export default function MealProfiles({ nav, icon }) {
     { key: "diet_type", label: "ডায়েট", render: (r) => <Badge color={DIET_COLOR[r.diet_type]}>{dietLabel(r.diet_type)}</Badge>, exportValue: (r) => dietLabel(r.diet_type) },
     { key: "allergy", label: "অ্যালার্জি", render: (r) => r.allergy ? <span title={r.allergy} style={{ color: "#E53935" }}>⚠ {r.allergy}</span> : <span style={{ color: "#9aa" }}>—</span> },
     { key: "meal_status", label: "অবস্থা", render: (r) => r.meal_status === "active" ? <Badge color="#2E7D32">সক্রিয়</Badge> : <Badge color="#EF6C00">বিরত</Badge>, exportValue: (r) => r.meal_status },
-    { key: "__actions", label: "", render: (r) => <Button size="sm" variant="subtle" onClick={() => openEdit(r)}>✏ সম্পাদনা</Button> },
+    { key: "has_profile", label: "প্রোফাইল", align: "center", render: (r) => r.has_profile ? <Badge color="#2E7D32">তৈরি হয়েছে</Badge> : <Badge color="#90A4AE">ডিফল্ট</Badge>, exportValue: (r) => r.has_profile ? "তৈরি" : "ডিফল্ট" },
+    { key: "__actions", label: "", render: (r) => r.has_profile
+      ? <Button size="sm" variant="subtle" onClick={() => openEdit(r)}>✏ সম্পাদনা</Button>
+      : <Button size="sm" onClick={() => openEdit(r)}>＋ প্রোফাইল তৈরি</Button> },
   ];
 
   return (
     <div>
-      <PageHeader icon={icon} title="ছাত্র মিল প্রোফাইল" description="প্রতি ছাত্রের বেলা, বাড়ির খাবার, ডায়েট, অ্যালার্জি, নোট ও ছবি" onBack={nav.onBack} breadcrumb={nav.crumbs}
-        actions={<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 নাম / আইডি / রুম" style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #cfd8cf", minWidth: 230, fontSize: 14 }} />} />
+      <PageHeader icon={icon} title="ছাত্র মিল প্রোফাইল"
+        description={`সব ছাত্র এখানে আছে — সারির বাটনে ক্লিক করে প্রোফাইল তৈরি/সম্পাদনা করুন${pendingCount ? ` • ${bn(pendingCount)} জনের প্রোফাইল বাকি` : ""}`}
+        onBack={nav.onBack} breadcrumb={nav.crumbs}
+        actions={<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 নাম / আইডি / রুম" style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #cfd8cf", minWidth: 200, fontSize: 14 }} />
+          <select value={pf} onChange={(e) => setPf(e.target.value)} style={{ padding: "9px 12px", borderRadius: 10, border: "1px solid #cfd8cf", fontSize: 14 }}>
+            <option value="">সব ছাত্র</option>
+            <option value="no">প্রোফাইল বাকি</option>
+            <option value="yes">তৈরি হয়েছে</option>
+          </select>
+        </div>} />
       <DataTable columns={columns} rows={filtered} loading={loading} exportName="meal-profiles"
         empty={{ icon: "🍽️", title: "কোনো ছাত্র নেই", description: "ছাত্র যোগ করলে এখানে প্রোফাইল দেখা যাবে" }} />
 

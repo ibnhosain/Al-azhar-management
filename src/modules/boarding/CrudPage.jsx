@@ -17,6 +17,7 @@ function FieldInput({ f, value, onChange }) {
 export default function CrudPage({
   nav, icon, title, description, api, resourceKey,
   columns, fields, codePrefix, seedRows, addLabel = "নতুন এন্ট্রি", emptyTitle = "কোনো তথ্য নেই",
+  headerExtra = null,
 }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
@@ -90,7 +91,7 @@ export default function CrudPage({
   return (
     <div>
       <PageHeader icon={icon} title={title} description={description} onBack={nav.onBack} breadcrumb={nav.crumbs}
-        actions={<Button onClick={openCreate} icon="＋">{addLabel}</Button>} />
+        actions={<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{headerExtra}<Button onClick={openCreate} icon="＋">{addLabel}</Button></div>} />
       <DataTable columns={cols} rows={rows} loading={loading} exportName={resourceKey}
         empty={{ icon, title: emptyTitle, description: `‘${addLabel}’ দিয়ে যোগ করুন` }} />
       {modal && (

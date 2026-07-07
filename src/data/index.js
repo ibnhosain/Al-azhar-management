@@ -43,3 +43,18 @@ export { mealProfiles } from "./mealProfiles";
 export { mealList } from "./mealList";
 export const holidays = makeCrud("holidays");
 export const mealPauses = makeCrud("meal_pauses");
+
+// schema v7 — Kitchen পরিকল্পনা (উপকরণ / পদ / রেসিপি / মেনু)
+export const ingredients = makeCrud("ingredient");
+export const dishes = makeCrud("dish");
+export { recipes } from "./recipes";
+export { menus } from "./menus";
+export { ingredientCalc } from "./ingredientCalc";
+export { kitchenReports } from "./kitchenReports";
+
+// schema v8 — Kitchen Store / Purchase / Inventory
+export const suppliers = makeCrud("supplier");
+export { store } from "./store";
+export { purchases } from "./purchases";
+export { market } from "./market";
+export { kitchenDashboard } from "./kitchenDashboard";

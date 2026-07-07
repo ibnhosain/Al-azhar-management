@@ -178,6 +178,156 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_pause_code ON meal_pauses(student_code);
     `);
   },
+
+  // ── v7: Kitchen পরিকল্পনা — উপকরণ মাস্টার, পদ, রেসিপি, মেনু ──
+  //  টেবিলগুলো typed (REAL/INTEGER) তাই entities auto-gen নয়, এখানে explicit।
+  //  ভবিষ্যতের Kitchen Store/Purchase/Supplier ingredient_id দিয়ে এগুলোকে
+  //  রেফার করতে পারবে — বিদ্যমান টেবিল না বদলেই (future-ready)।
+  function v7(db) {
+    db.exec(`
+      -- factory-managed কলামে NOT NULL দেওয়া হয় না: factory omitted কলামে
+      -- explicit NULL পাঠায় → DEFAULT থাকলেও NOT NULL ভাঙে (institution_id-এর মতো)।
+      CREATE TABLE IF NOT EXISTS ingredients (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        name_bn           TEXT NOT NULL,
+        name_en           TEXT,
+        category          TEXT,
+        unit              TEXT DEFAULT 'কেজি',
+        avg_cost          REAL DEFAULT 0,
+        purchase_unit     TEXT,
+        conversion_factor REAL DEFAULT 1,
+        min_stock         REAL DEFAULT 0,
+        active            TEXT DEFAULT '1',
+        note              TEXT,
+        institution_id    INTEGER NOT NULL DEFAULT 1,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS dishes (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        name           TEXT NOT NULL,
+        category       TEXT,
+        meal_type      TEXT NOT NULL DEFAULT 'any',
+        photo_path     TEXT,
+        prep_time      INTEGER NOT NULL DEFAULT 0,
+        cook_time      INTEGER NOT NULL DEFAULT 0,
+        serving_type   TEXT,
+        description    TEXT,
+        active         TEXT NOT NULL DEFAULT '1',
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS recipes (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        dish_id             INTEGER UNIQUE REFERENCES dishes(id) ON DELETE CASCADE,
+        cooking_notes       TEXT,
+        prep_notes          TEXT,
+        special_instruction TEXT,
+        institution_id      INTEGER NOT NULL DEFAULT 1,
+        created_at          TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS recipe_items (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        dish_id         INTEGER REFERENCES dishes(id) ON DELETE CASCADE,
+        ingredient_id   INTEGER REFERENCES ingredients(id) ON DELETE CASCADE,
+        qty_per_person  REAL NOT NULL DEFAULT 0,
+        unit            TEXT,
+        optional        TEXT NOT NULL DEFAULT '0',
+        note            TEXT,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS menus (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        m_date         TEXT,
+        meal_type      TEXT NOT NULL DEFAULT 'lunch',
+        menu_type      TEXT NOT NULL DEFAULT 'normal',
+        title          TEXT,
+        is_template    TEXT NOT NULL DEFAULT '0',
+        note           TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS menu_items (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        menu_id    INTEGER REFERENCES menus(id) ON DELETE CASCADE,
+        dish_id    INTEGER REFERENCES dishes(id) ON DELETE CASCADE,
+        note       TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ingredients_cat ON ingredients(category);
+      CREATE INDEX IF NOT EXISTS idx_dishes_cat ON dishes(category);
+      CREATE INDEX IF NOT EXISTS idx_dishes_meal ON dishes(meal_type);
+      CREATE INDEX IF NOT EXISTS idx_recipe_items_dish ON recipe_items(dish_id);
+      CREATE INDEX IF NOT EXISTS idx_menus_date ON menus(m_date, meal_type);
+      CREATE INDEX IF NOT EXISTS idx_menu_items_menu ON menu_items(menu_id);
+    `);
+  },
+
+  // ── v8: কিচেন স্টোর / ক্রয় / সরবরাহকারী (Inventory) ──
+  //  স্টক একটি লেজার (store_transactions); বর্তমান স্টক লেজার থেকে গণনা হয়।
+  //  ক্রয় সেভ করলে প্রতি আইটেমে একটি 'in' লেজার এন্ট্রি স্বয়ংক্রিয়ভাবে বসে।
+  //  সব ক্রয়/স্টক ingredient_id দিয়ে Phase 2 উপকরণকে রেফার করে।
+  function v8(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS suppliers (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        name           TEXT NOT NULL,
+        phone          TEXT,
+        address        TEXT,
+        note           TEXT,
+        active         TEXT DEFAULT '1',
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS purchases (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        p_date         TEXT NOT NULL,
+        supplier_id    INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+        total          REAL DEFAULT 0,
+        note           TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS purchase_items (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchase_id   INTEGER REFERENCES purchases(id) ON DELETE CASCADE,
+        ingredient_id INTEGER REFERENCES ingredients(id),
+        qty           REAL NOT NULL DEFAULT 0,
+        unit          TEXT,
+        unit_cost     REAL NOT NULL DEFAULT 0,
+        subtotal      REAL NOT NULL DEFAULT 0,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS store_transactions (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        ingredient_id  INTEGER REFERENCES ingredients(id) ON DELETE CASCADE,
+        t_date         TEXT NOT NULL,
+        type           TEXT NOT NULL DEFAULT 'in',
+        qty            REAL NOT NULL DEFAULT 0,
+        unit           TEXT,
+        unit_cost      REAL NOT NULL DEFAULT 0,
+        source         TEXT NOT NULL DEFAULT 'manual',
+        ref_id         INTEGER,
+        note           TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_store_txn_ing ON store_transactions(ingredient_id);
+      CREATE INDEX IF NOT EXISTS idx_store_txn_date ON store_transactions(t_date);
+      CREATE INDEX IF NOT EXISTS idx_store_txn_src ON store_transactions(source, ref_id);
+      CREATE INDEX IF NOT EXISTS idx_purchase_items_pur ON purchase_items(purchase_id);
+      CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(p_date);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।
