@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { PageHeader, DataTable, Badge, Button, Modal, useToast, TextField, SelectField } from "../../ui";
-import { boarding, environment, seedResource } from "../../data";
+import { boarding, students as studentsApi, environment, seedResource } from "../../data";
 import { bn } from "./constants";
 
 const emptyForm = () => ({ name: "", room: "", floor: "", fee: "", status: "সক্রিয়" });
@@ -13,6 +13,7 @@ const initResidents = [
 export default function BoardingResidents({ nav, icon }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
+  const [studentOpts, setStudentOpts] = useState([{ value: "", label: "— শিক্ষার্থী থেকে বাছুন (ঐচ্ছিক) —" }]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(emptyForm());
@@ -20,10 +21,14 @@ export default function BoardingResidents({ nav, icon }) {
 
   const reload = async () => { setRows(await boarding.list()); setLoading(false); };
   useEffect(() => {
+    let alive = true;
     (async () => {
       if (environment === "web") seedResource("boarding", initResidents);
+      const studs = await studentsApi.list().catch(() => []);
+      if (alive) setStudentOpts([{ value: "", label: "— শিক্ষার্থী থেকে বাছুন (ঐচ্ছিক) —" }, ...studs.map((s) => ({ value: s.name, label: `${s.name} (${s.code || s.roll || "—"})` }))]);
       await reload();
     })();
+    return () => { alive = false; };
   }, []);
 
   const nextCode = () => {
@@ -67,6 +72,7 @@ export default function BoardingResidents({ nav, icon }) {
       {modal && (
         <Modal title="নতুন আবাসিক" icon="🏠" onClose={() => setModal(false)}
           footer={<><Button variant="secondary" onClick={() => setModal(false)}>বাতিল</Button><Button onClick={save} loading={saving}>সংরক্ষণ</Button></>}>
+          <SelectField label="শিক্ষার্থী থেকে অটো-ফিল" value="" onChange={(v) => v && setForm({ ...form, name: v })} options={studentOpts} />
           <TextField label="নাম" required value={form.name} onChange={(v) => setForm({ ...form, name: v })} autoFocus />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <TextField label="রুম নম্বর" required value={form.room} onChange={(v) => setForm({ ...form, room: v })} />

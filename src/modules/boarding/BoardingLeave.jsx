@@ -1,6 +1,11 @@
 import CrudPage from "./CrudPage";
 import { Badge } from "../../ui";
-import { leaves } from "../../data";
+import { leaves, students as studentsApi } from "../../data";
+
+const studentOptions = async () => {
+  const list = await studentsApi.list();
+  return [{ value: "", label: "— শিক্ষার্থী বাছুন —" }, ...list.map((s) => ({ value: s.name, label: `${s.name} (${s.code || s.roll || "—"})` }))];
+};
 
 export default function BoardingLeave(props) {
   return (
@@ -15,7 +20,7 @@ export default function BoardingLeave(props) {
         { key: "status", label: "অবস্থা", render: (r) => <Badge color={r.status === "অনুমোদিত" ? "#2E7D32" : r.status === "অপেক্ষমাণ" ? "#F59E0B" : "#E53935"}>{r.status || "—"}</Badge>, exportValue: (r) => r.status },
       ]}
       fields={[
-        { key: "student", label: "শিক্ষার্থীর নাম", required: true },
+        { key: "student", label: "শিক্ষার্থী", type: "select", optionsFrom: studentOptions, required: true },
         { key: "from_date", label: "শুরুর তারিখ", type: "date" },
         { key: "to_date", label: "শেষ তারিখ", type: "date" },
         { key: "reason", label: "কারণ", full: true },

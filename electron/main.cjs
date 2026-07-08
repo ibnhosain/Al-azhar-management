@@ -3,7 +3,7 @@
 //  কাজ: ডেস্কটপ উইন্ডো তৈরি করা এবং তাতে React অ্যাপ লোড করা।
 //  (SQLite / IPC / Backup — পরবর্তী ধাপে এখানে যুক্ত হবে)
 // ────────────────────────────────────────────────────────────────
-const { app, BrowserWindow, dialog, Menu } = require("electron");
+const { app, BrowserWindow, dialog, Menu, shell } = require("electron");
 const path = require("path");
 const { initDatabase, closeDatabase } = require("./db/connection.cjs");
 const { registerIpc } = require("./ipc/index.cjs");
@@ -61,6 +61,14 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
+
+  // window.open হ্যান্ডলিং:
+  //  - বাইরের লিংক (WhatsApp wa.me, ইত্যাদি) → ডিফল্ট ব্রাউজারে খোলে (in-app নয়)
+  //  - প্রিন্ট পপআপ (about:blank) → in-app native উইন্ডো অনুমোদিত (window.print চালাতে)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) { shell.openExternal(url); return { action: "deny" }; }
+    return { action: "allow" };
+  });
 
   // Auto Update: উইন্ডোকে ইভেন্ট-লক্ষ্য হিসেবে সংযুক্ত করা + চালুর পর নীরব চেক।
   updaterService.init(mainWindow);

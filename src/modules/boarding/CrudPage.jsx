@@ -3,10 +3,10 @@ import { PageHeader, DataTable, Button, Modal, useToast, TextField, SelectField,
 import { environment, seedResource } from "../../data";
 import { bn } from "./constants";
 
-// একটি ফিল্ড কনফিগ → উপযুক্ত ইনপুট
-function FieldInput({ f, value, onChange }) {
+// একটি ফিল্ড কনফিগ → উপযুক্ত ইনপুট (options: dynamic হলে বাইরে থেকে আসে)
+function FieldInput({ f, value, onChange, options }) {
   const common = { label: f.label, value, onChange, required: f.required };
-  if (f.type === "select") return <SelectField {...common} options={f.options || []} />;
+  if (f.type === "select") return <SelectField {...common} options={options || f.options || []} />;
   if (f.type === "money") return <MoneyField {...common} />;
   if (f.type === "date") return <DateField {...common} />;
   if (f.type === "textarea") return <TextareaField {...common} />;
@@ -14,10 +14,13 @@ function FieldInput({ f, value, onChange }) {
 }
 
 // যেকোনো সাধারণ CRUD এন্টিটির পূর্ণ পেজ (list + modal form) — config দিয়ে।
+//  field.optionsFrom: async () => [{value,label}]  — real ডেটা থেকে dropdown।
+//  onAfterSave(data, {editing}): সংরক্ষণের পর side-effect (যেমন বেড occupied করা)।
+//  onFieldChange(key, value, form) => patch — একটি ফিল্ড বদলালে অন্য ফিল্ড auto-fill।
 export default function CrudPage({
   nav, icon, title, description, api, resourceKey,
   columns, fields, codePrefix, seedRows, addLabel = "নতুন এন্ট্রি", emptyTitle = "কোনো তথ্য নেই",
-  headerExtra = null,
+  headerExtra = null, onAfterSave = null, onFieldChange = null,
 }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
@@ -26,8 +29,19 @@ export default function CrudPage({
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [dynOpts, setDynOpts] = useState({});
 
   const blank = () => Object.fromEntries(fields.map((f) => [f.key, f.default ?? ""]));
+
+  const loadOptions = async () => {
+    const dyn = {};
+    for (const f of fields) {
+      if (typeof f.optionsFrom === "function") {
+        try { dyn[f.key] = await f.optionsFrom(); } catch { dyn[f.key] = []; }
+      }
+    }
+    return dyn;
+  };
 
   const reload = async () => { setRows(await api.list()); setLoading(false); };
   useEffect(() => {
@@ -35,11 +49,19 @@ export default function CrudPage({
     (async () => {
       if (environment === "web" && seedRows && resourceKey) seedResource(resourceKey, seedRows);
       const r = await api.list();
-      if (alive) { setRows(r); setLoading(false); }
+      const dyn = await loadOptions();
+      if (alive) { setRows(r); setDynOpts(dyn); setLoading(false); }
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // একটি ফিল্ড বদলালে form patch (নিজের value + optional auto-fill)
+  const changeField = (key, value) => {
+    const patch = { [key]: value };
+    if (onFieldChange) Object.assign(patch, onFieldChange(key, value, form) || {});
+    setForm((prev) => ({ ...prev, ...patch }));
+  };
 
   const nextCode = () => {
     const nums = rows.map((r) => parseInt(String(r.code || "").replace(/\D/g, ""), 10)).filter((n) => !isNaN(n));
@@ -65,8 +87,10 @@ export default function CrudPage({
     setSaving(true);
     try {
       const data = { ...form };
-      if (editing) { await api.update(editing, data); toast.success("আপডেট হয়েছে"); }
-      else { await api.create(codePrefix ? { ...data, code: nextCode() } : data); toast.success("যোগ হয়েছে"); }
+      let saved;
+      if (editing) { saved = await api.update(editing, data); toast.success("আপডেট হয়েছে"); }
+      else { saved = await api.create(codePrefix ? { ...data, code: nextCode() } : data); toast.success("যোগ হয়েছে"); }
+      if (onAfterSave) { try { await onAfterSave(saved || data, { editing: !!editing }); } catch { /* side-effect ব্যর্থ হলেও মূল সেভ ঠিক আছে */ } }
       setModal(false); await reload();
     } catch (e) { toast.error("সমস্যা: " + (e.message || e)); }
     finally { setSaving(false); }
@@ -101,7 +125,7 @@ export default function CrudPage({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {fields.map((f) => (
               <div key={f.key} style={{ gridColumn: f.full ? "1 / -1" : "auto" }}>
-                <FieldInput f={f} value={form[f.key] ?? ""} onChange={(v) => setForm({ ...form, [f.key]: v })} />
+                <FieldInput f={f} value={form[f.key] ?? ""} options={dynOpts[f.key]} onChange={(v) => changeField(f.key, v)} />
               </div>
             ))}
           </div>

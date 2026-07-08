@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PageHeader, Card, Badge, useToast } from "../../ui";
+import { PageHeader, Card } from "../../ui";
 import MealList from "./MealList";
 import MealProfiles from "./MealProfiles";
 import MealPause from "./MealPause";
@@ -41,7 +41,6 @@ const TILES = [
 ];
 
 export default function KitchenModule() {
-  const toast = useToast();
   const [view, setView] = useState("landing");
   const goLanding = () => setView("landing");
   const active = TILES.find((t) => t.key === view && t.C);
@@ -59,12 +58,11 @@ export default function KitchenModule() {
         breadcrumb={[{ label: "ড্যাশবোর্ড" }, { label: "রান্নাঘর ও মিল" }]} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 16 }}>
         {TILES.map((t) => (
-          <Card key={t.key} hover={!t.soon} pad={0}
-            style={{ cursor: t.soon ? "default" : "pointer", overflow: "hidden", opacity: t.soon ? 0.6 : 1 }}
-            onClick={() => (t.soon ? toast.info("এই অংশটি পরবর্তী Phase-এ যুক্ত হবে") : setView(t.key))}>
+          <Card key={t.key} hover pad={0}
+            style={{ cursor: "pointer", overflow: "hidden" }}
+            onClick={() => setView(t.key)}>
             <div style={{ height: 4, background: t.color }} />
-            <div style={{ padding: "22px 18px", textAlign: "center", position: "relative" }}>
-              {t.soon && <span style={{ position: "absolute", top: 8, right: 8 }}><Badge color="#78909C">শীঘ্রই</Badge></span>}
+            <div style={{ padding: "22px 18px", textAlign: "center" }}>
               <div style={{ width: 58, height: 58, borderRadius: 16, margin: "0 auto 12px", background: t.color + "14", color: t.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{t.icon}</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#243B40" }}>{t.label}</div>
               <div style={{ fontSize: 12, color: "#78909C", marginTop: 4 }}>{t.desc}</div>
