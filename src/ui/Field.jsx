@@ -1,4 +1,20 @@
+import { useState, useRef, useEffect } from "react";
 import { colors, radius, font } from "./theme";
+
+// IME-নিরাপদ ইনপুট: অভ্র/বিজয়/ইউনিকোড বাংলা কীবোর্ডে টাইপ করার সময়
+// composition (যুক্তাক্ষর গঠন) ভেঙে যায় না। composition চলাকালীন controlled value
+// ফেরত চাপিয়ে দিই না; composition শেষ হলে upstream-এ পাঠাই।
+function useImeInput(value, onChange) {
+  const [inner, setInner] = useState(value ?? "");
+  const composing = useRef(false);
+  useEffect(() => { if (!composing.current) setInner(value ?? ""); }, [value]);
+  return {
+    value: inner,
+    onChange: (e) => { const v = e.target.value; setInner(v); if (!composing.current && onChange) onChange(v); },
+    onCompositionStart: () => { composing.current = true; },
+    onCompositionEnd: (e) => { composing.current = false; const v = e.target.value; setInner(v); if (onChange) onChange(v); },
+  };
+}
 
 const baseInput = {
   width: "100%", padding: "12px 12px", border: `1px solid ${colors.border}`,
@@ -25,11 +41,12 @@ function Wrapper({ label, required, error, filled, children }) {
 }
 
 export function TextField({ label, value = "", onChange, required, error, type = "text", autoFocus, disabled, ...rest }) {
+  const ime = useImeInput(value, onChange);
   return (
-    <Wrapper label={label} required={required} error={error} filled={!!String(value ?? "").length}>
+    <Wrapper label={label} required={required} error={error} filled={!!String(ime.value ?? "").length}>
       <input
-        className={"uk-input" + (error ? " uk-invalid" : "")} type={type} value={value ?? ""}
-        onChange={(e) => onChange && onChange(e.target.value)} autoFocus={autoFocus} disabled={disabled}
+        className={"uk-input" + (error ? " uk-invalid" : "")} type={type}
+        {...ime} autoFocus={autoFocus} disabled={disabled}
         placeholder=" " style={baseInput} {...rest}
       />
     </Wrapper>
@@ -71,11 +88,12 @@ export function SelectField({ label, value = "", onChange, required, error, opti
 }
 
 export function TextareaField({ label, value = "", onChange, required, error, rows = 3, disabled }) {
+  const ime = useImeInput(value, onChange);
   return (
-    <Wrapper label={label} required={required} error={error} filled={!!String(value ?? "").length}>
+    <Wrapper label={label} required={required} error={error} filled={!!String(ime.value ?? "").length}>
       <textarea
-        className={"uk-input" + (error ? " uk-invalid" : "")} value={value ?? ""} rows={rows} disabled={disabled}
-        onChange={(e) => onChange && onChange(e.target.value)} placeholder=" "
+        className={"uk-input" + (error ? " uk-invalid" : "")} rows={rows} disabled={disabled}
+        {...ime} placeholder=" "
         style={{ ...baseInput, resize: "vertical", minHeight: 66 }}
       />
     </Wrapper>
