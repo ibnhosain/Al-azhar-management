@@ -24,9 +24,13 @@ function generate(date, mealType) {
   db.all("SELECT student, room_no, bed_no FROM bed_allocations").forEach((a) => { if (a.student) allocs[a.student] = a; });
   const paused = {};
   db.all("SELECT student_code FROM meal_pauses WHERE from_date <= ? AND to_date >= ?", [date, date]).forEach((r) => { paused[r.student_code] = true; });
+  // Phase 4: প্রকৃত হাজিরা (student_id → status) + গেস্ট সংখ্যা
+  const attend = {};
+  db.all("SELECT student_id, status FROM meal_attendance WHERE m_date = ? AND meal_type = ?", [date, mealType]).forEach((r) => { attend[r.student_id] = r.status; });
+  const guest = Number(db.get("SELECT COALESCE(SUM(guest_count),0) AS c FROM guest_meals WHERE g_date = ? AND meal_type = ?", [date, mealType]).c) || 0;
 
   const rows = [];
-  const summary = { total: 0, home: 0, paused: 0, guest: 0, special: 0, sick: 0 };
+  const summary = { total: 0, home: 0, paused: 0, guest, special: 0, sick: 0, present: 0, absent: 0 };
 
   for (const s of students) {
     const p = profiles[s.id] || {};
@@ -41,11 +45,15 @@ function generate(date, mealType) {
     if (diet !== "normal") summary.special++;
     if (diet === "sick") summary.sick++;
 
+    const status = attend[s.id] || "pending";
+    if (status === "present") summary.present++;
+    else if (status === "absent") summary.absent++;
+
     rows.push({
       id: s.id, code: s.code, name: s.name, class: s.class, section: "", roll: s.roll,
       room_no: a.room_no || "", bed_no: a.bed_no || "",
       meal_type: mealType, diet_type: diet, allergy: p.allergy || "", note: p.note || "",
-      attendance: "pending", // Phase 5-এ প্রকৃত হাজিরা যুক্ত হবে
+      attendance: status,
       photo: p.photo_path ? photo.readPhoto(p.photo_path) : null,
     });
     summary.total++;

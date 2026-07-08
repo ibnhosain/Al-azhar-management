@@ -1,7 +1,7 @@
 {
   "name": "madrasa-dashboard",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Madrasa Management — offline desktop ERP (মাদরাসা ব্যবস্থাপনা)",
   "author": "Easy Coding Space",
   "type": "module",
@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.18",
+    "electron-updater": "^6.8.9",
     "node-sqlite3-wasm": "^0.8.59",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

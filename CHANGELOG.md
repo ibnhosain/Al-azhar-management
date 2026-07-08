@@ -1,0 +1,58 @@
+# Changelog
+
+এই ফাইলে প্রতিটি প্রকাশিত সংস্করণের পরিবর্তন লিপিবদ্ধ থাকে।
+সংস্করণ নীতি: [Semantic Versioning](https://semver.org/lang/bn/) — `MAJOR.MINOR.PATCH`।
+প্রতিটি রিলিজে `latest.yml`, `MadrasaManagement-Setup-x.x.x.exe`, ও `.blockmap` GitHub Release-এ থাকা বাধ্যতামূলক (electron-updater সামঞ্জস্য)।
+
+---
+
+## [1.2.0] — 2026-07-08
+
+### 🚀 New Features
+- **Professional Auto Update System** (electron-updater + GitHub Releases):
+  - অ্যাপ চালুর সময় স্বয়ংক্রিয় আপডেট চেক + **Help → আপডেট চেক করুন** মেনু।
+  - Update UI: Checking / Downloading / Paused / Downloaded / Installing / No Update / Failed।
+  - বর্তমান সংস্করণ, সর্বশেষ সংস্করণ, **Release Notes (GitHub থেকে)**, ডাউনলোড সাইজ।
+  - **Background download** — শতাংশ, গতি, বাকি সময়, **Pause/Resume**।
+  - Update Now / Later / Restart to Install বাটন; অ্যাপজুড়ে ভাসমান Update Notifier।
+  - Configurable update provider (GitHub এখন → পরে custom server, শুধু `update.config.cjs`)।
+
+### 🔒 Data Safety
+- আপডেট শুধু অ্যাপ ফাইল প্রতিস্থাপন করে; **Database (D:\BustanulIslam\Data), Photos, Backup, Config, Documents কখনো পরিবর্তন/মুছে ফেলা হয় না** (ইনস্টল ফোল্ডারের বাইরে থাকায়)।
+
+### 🛡️ Security & Error Handling
+- ডাউনলোড sha512 যাচাই (electron-updater), শুধু official GitHub Release থেকে আপডেট।
+- বন্ধুত্বপূর্ণ ত্রুটি বার্তা: No Internet / GitHub Offline / Release Not Found / Download Interrupted / Permission Denied / Installation Failed; pause = নিরাপদ বাতিল (rollback-safe)।
+
+### 🗄️ Database Changes
+- নেই (schema সংস্করণ অপরিবর্তিত)।
+
+### ⚠️ Breaking Changes
+- নেই।
+
+---
+
+## [1.1.0] — 2026-07-07
+
+### 🚀 New Features
+- **সম্পূর্ণ রান্নাঘর ও মিল ব্যবস্থাপনা মডিউল** (🍳, ১৮টি সক্রিয় স্ক্রিন):
+  - Phase 1 — মিল প্রোফাইল, স্মার্ট মিল লিস্ট, মিল বিরতি, ছুটির ক্যালেন্ডার।
+  - Phase 2 — উপকরণ মাস্টার, পদ, রেসিপি, মেনু প্ল্যানার, স্মার্ট উপকরণ ক্যালকুলেটর, রিপোর্ট।
+  - Phase 3 — কিচেন স্টোর (লেজার), ক্রয় (অটো স্টক-ইন + গড় মূল্য), সরবরাহকারী, মার্কেট প্ল্যানার, কস্ট অ্যানালাইসিস, কিচেন ড্যাশবোর্ড।
+  - Phase 4 — মিল হাজিরা, গেস্ট মিল, মিল অনুমোদন (→ অটো স্টক খরচ), WhatsApp/Send।
+
+### 🗄️ Database Changes
+- Schema v6 → v9 (additive migration): student_meal_profiles, holidays, meal_pauses, ingredients, dishes, recipes, recipe_items, menus, menu_items, suppliers, purchases, purchase_items, store_transactions, meal_attendance, guest_meals, meal_approvals।
+- ছবি SQLite-এর বাইরে ফাইলে; ব্যাকআপ এক ZIP-এ (DB + photos + config)।
+
+### ⚠️ Breaking Changes
+- নেই (বিদ্যমান কোনো টেবিল/ফিচার পরিবর্তিত হয়নি)।
+
+---
+
+## [1.0.0] — 2026-06
+
+### 🚀 Initial Release
+- অফলাইন Windows ডেস্কটপ ERP (Electron + React + Vite + SQLite + Repository Pattern + IPC)।
+- মূল মডিউল: ড্যাশবোর্ড, শিক্ষার্থী, শিক্ষক, একাডেমিক, প্রমোশন, প্রশাসন, হিসাব, রশিদ, স্পনসর, ঋণ, এতিম, বোর্ডিং, নোটিশ।
+- ব্যাকআপ/রিস্টোর, প্রথম-রান DB-লোকেশন সেটআপ, NSIS ইনস্টলার।

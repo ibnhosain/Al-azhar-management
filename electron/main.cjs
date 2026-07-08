@@ -3,17 +3,45 @@
 //  কাজ: ডেস্কটপ উইন্ডো তৈরি করা এবং তাতে React অ্যাপ লোড করা।
 //  (SQLite / IPC / Backup — পরবর্তী ধাপে এখানে যুক্ত হবে)
 // ────────────────────────────────────────────────────────────────
-const { app, BrowserWindow, dialog } = require("electron");
+const { app, BrowserWindow, dialog, Menu } = require("electron");
 const path = require("path");
 const { initDatabase, closeDatabase } = require("./db/connection.cjs");
 const { registerIpc } = require("./ipc/index.cjs");
 const backupService = require("./services/backup.service.cjs");
+const updaterService = require("./services/updater.service.cjs");
 
 // dev মোডে Vite সার্ভারের URL এখানে থাকবে; প্রোডাকশনে থাকবে না।
 const DEV_SERVER_URL = process.env.ELECTRON_START_URL;
 const isDev = !!DEV_SERVER_URL;
 
 let mainWindow = null;
+
+// অ্যাপ মেনু: Help → আপডেট চেক করুন + সম্পর্কে (autoHideMenuBar থাকায় Alt-এ দেখা যায়)।
+function buildAppMenu() {
+  const isMac = process.platform === "darwin";
+  const template = [
+    ...(isMac ? [{ role: "appMenu" }] : []),
+    { role: "fileMenu" },
+    { role: "viewMenu" },
+    {
+      label: "সহায়তা",
+      role: "help",
+      submenu: [
+        { label: "আপডেট চেক করুন", click: () => { try { updaterService.check(true); } catch { /* উপেক্ষা */ } } },
+        { type: "separator" },
+        {
+          label: "সম্পর্কে",
+          click: () => dialog.showMessageBox(mainWindow, {
+            type: "info", title: "Madrasa Management",
+            message: "Madrasa Management",
+            detail: "সংস্করণ v" + app.getVersion() + "\n© 2026 Easy Coding Space",
+          }),
+        },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,6 +61,10 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
+
+  // Auto Update: উইন্ডোকে ইভেন্ট-লক্ষ্য হিসেবে সংযুক্ত করা + চালুর পর নীরব চেক।
+  updaterService.init(mainWindow);
+  setTimeout(() => { try { updaterService.check(); } catch { /* আপডেট চেক ব্যর্থ হলেও অ্যাপ চলবে */ } }, 4000);
 
   if (isDev) {
     // dev: Vite dev সার্ভার থেকে লোড (Hot Reload সহ)
@@ -75,6 +107,7 @@ if (!gotLock) {
     }
 
     createWindow();
+    buildAppMenu();
 
     // macOS: ডক আইকনে ক্লিকে উইন্ডো না থাকলে নতুন খুলবে
     app.on("activate", () => {

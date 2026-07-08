@@ -22,6 +22,18 @@ files:
 asarUnpack:
   - "**/node_modules/node-sqlite3-wasm/**"
 
+# ── Auto Update: GitHub Releases-কে Update Server হিসেবে ব্যবহার ──
+#  প্রকাশের সময় electron-builder  latest.yml + Setup.exe  GitHub Release-এ আপলোড করে;
+#  ইনস্টল করা অ্যাপ (electron-updater) পাবলিক রিলিজ থেকে সেটি পড়ে আপডেট করে।
+#  প্রকাশ: GH_TOKEN পরিবেশ চলকে GitHub টোকেন দিয়ে  →  npm run electron:build -- --publish always
+#  (রিপো পাবলিক হলে ক্লায়েন্ট ডাউনলোডে কোনো টোকেন লাগে না)।
+#  DB (D:\BustanulIslam\Data) / Photos / Backup / config.json ইনস্টল ফোল্ডারের বাইরে →
+#  NSIS আপডেট শুধু অ্যাপ ফাইল প্রতিস্থাপন করে, ব্যবহারকারীর ডেটা কখনো স্পর্শ করে না।
+publish:
+  provider: github
+  owner: ibnhosain
+  repo: Al-Azhar-management
+
 win:
   target:
     - nsis

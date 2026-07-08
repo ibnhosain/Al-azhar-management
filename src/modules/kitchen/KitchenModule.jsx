@@ -15,11 +15,17 @@ import KitchenStore from "./KitchenStore";
 import Purchases from "./Purchases";
 import Suppliers from "./Suppliers";
 import MarketPlanner from "./MarketPlanner";
+import MealAttendance from "./MealAttendance";
+import GuestMeals from "./GuestMeals";
+import MealApproval from "./MealApproval";
 
 const TILES = [
   { key: "dashboard", icon: "📊", label: "কিচেন ড্যাশবোর্ড", color: "#2E7D32", desc: "সারসংক্ষেপ + সতর্কতা", C: KitchenDashboard },
   { key: "meal_list", icon: "📋", label: "মিল লিস্ট", color: "#2E7D32", desc: "দৈনিক অটো মিল তালিকা", C: MealList },
   { key: "profiles", icon: "👤", label: "মিল প্রোফাইল", color: "#00838F", desc: "ছাত্রের preference + ছবি", C: MealProfiles },
+  { key: "attendance", icon: "✅", label: "মিল হাজিরা", color: "#2E7D32", desc: "প্রকৃত হাজিরা নিন", C: MealAttendance },
+  { key: "approval", icon: "📝", label: "মিল অনুমোদন", color: "#E53935", desc: "চূড়ান্ত → অটো স্টক খরচ", C: MealApproval },
+  { key: "guest", icon: "🧑‍🤝‍🧑", label: "গেস্ট মিল", color: "#6A1B9A", desc: "অতিথি মিল সংখ্যা", C: GuestMeals },
   { key: "menu", icon: "🍽️", label: "মেনু প্ল্যানার", color: "#2E7D32", desc: "দৈনিক/সাপ্তাহিক/টেমপ্লেট মেনু", C: MenuPlanner },
   { key: "calc", icon: "🧮", label: "উপকরণ ক্যালকুলেটর", color: "#6A1B9A", desc: "রেসিপি × মিল সংখ্যা", C: IngredientCalculator },
   { key: "market", icon: "🛒", label: "মার্কেট প্ল্যানার", color: "#E53935", desc: "প্রয়োজন − স্টক = বাজার", C: MarketPlanner },
@@ -32,7 +38,6 @@ const TILES = [
   { key: "pause", icon: "⏸️", label: "মিল বিরতি", color: "#EF6C00", desc: "ছুটি / অসুস্থ / বাড়ি", C: MealPause },
   { key: "holiday", icon: "📅", label: "ছুটির ক্যালেন্ডার", color: "#6A1B9A", desc: "ছুটির দিন মিল বন্ধ", C: HolidayPage },
   { key: "reports", icon: "📈", label: "রিপোর্ট", color: "#00838F", desc: "রেসিপি/মেনু/স্টক/কস্ট", C: KitchenReports },
-  { key: "s5", icon: "✅", label: "মিল হাজিরা", color: "#607D8B", desc: "পরবর্তী Phase", soon: true },
 ];
 
 export default function KitchenModule() {

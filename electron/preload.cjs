@@ -26,4 +26,13 @@ contextBridge.exposeInMainWorld("api", {
     }
     return ipcRenderer.invoke(channel, payload);
   },
+
+  // Auto Update ইভেন্ট সাবস্ক্রিপশন (main → renderer push)।
+  // callback পায় { status, version, percent, ... }; unsubscribe ফাংশন ফেরত।
+  onUpdaterEvent: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_e, data) => callback(data);
+    ipcRenderer.on("updater:event", listener);
+    return () => ipcRenderer.removeListener("updater:event", listener);
+  },
 });

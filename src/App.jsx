@@ -10,6 +10,7 @@ import {
 import BoardingModule from "./modules/boarding/BoardingModule";
 import KitchenModule from "./modules/kitchen/KitchenModule";
 import BackupRestore from "./modules/settings/BackupRestore";
+import AutoUpdate from "./modules/settings/AutoUpdate";
 
 // নতুন কোড তৈরির সহায়ক: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন RCP-005)
 function genCode(list, prefix) {
@@ -1262,12 +1263,15 @@ const SvgIcon = ({ d, d2, viewBox="0 0 24 24" }) => (
 function Settings() {
   const [activeModal, setActiveModal] = useState(null);
   const [backupOpen, setBackupOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
   const [siteForm, setSiteForm] = useState({ instituteName:"মাদরাসাতুল আযহার আল-আরাবিয়া", address:"সদর, ময়মনসিংহ", phone:"01747-658744", email:"", academicYear:"২০২৬", currency:"৳" });
   const [saved, setSaved] = useState(false);
   const saveSite = () => { setSaved(true); setTimeout(()=>{ setSaved(false); setActiveModal(null); },1500); };
 
   // ব্যাকআপ ও রিস্টোর — পূর্ণ পেজ (kit UI)
   if (backupOpen) return <BackupRestore onBack={() => setBackupOpen(false)} />;
+  // সফটওয়্যার আপডেট — পূর্ণ পেজ (kit UI)
+  if (updateOpen) return <AutoUpdate onBack={() => setUpdateOpen(false)} />;
 
   const settingCards = [
     { id:"site",     emoji:"🗄️",  label:"সাইট সেটিংস" },
@@ -1287,6 +1291,7 @@ function Settings() {
     { id:"subject",  emoji:"📄",  label:"পাঠ্যবিষয় সমূহ" },
     { id:"sub_asgn", emoji:"📖",  label:"পাঠ্যবিষয় বরাদ্দ" },
     { id:"backup",   emoji:"💾",  label:"ব্যাকআপ ও রিস্টোর" },
+    { id:"update",   emoji:"🚀",  label:"সফটওয়্যার আপডেট" },
     { id:"delete",   emoji:"🗑️",  label:"ডেটা ডিলিট সেটিং" },
     { id:"license",  emoji:"🪪",  label:"লাইসেন্স সেটিংস" },
     { id:"form",     emoji:"📝",  label:"ভর্তি ফর্ম" },
@@ -1324,7 +1329,7 @@ function Settings() {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
         {settingCards.map(c => (
           <div key={c.id}
-            onClick={() => (c.id === "backup" ? setBackupOpen(true) : setActiveModal(c.id))}
+            onClick={() => (c.id === "backup" ? setBackupOpen(true) : c.id === "update" ? setUpdateOpen(true) : setActiveModal(c.id))}
             style={cardBase}
             onMouseEnter={e => { e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.13)"; e.currentTarget.style.transform="translateY(-2px)"; }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow="none"; e.currentTarget.style.transform="translateY(0)"; }}>

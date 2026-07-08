@@ -63,6 +63,19 @@ export const txnTypeLabel = (v) => (TXN_TYPES.find((t) => t.value === v) || {}).
 export const txnTypeColor = (v) => (TXN_TYPES.find((t) => t.value === v) || {}).color || "#607D8B";
 export const txnSourceLabel = (v) => (TXN_SOURCES.find((t) => t.value === v) || {}).label || v;
 
+// ── Phase 4: মিল অপারেশন ধ্রুবক ──
+export const ATTEND_STATUS = [
+  { value: "present", label: "হাজির", color: "#2E7D32" },
+  { value: "absent", label: "অনুপস্থিত", color: "#E53935" },
+  { value: "leave", label: "ছুটি", color: "#EF6C00" },
+];
+export const attendLabel = (v) => (ATTEND_STATUS.find((s) => s.value === v) || {}).label || "অপেক্ষমাণ";
+export const attendColor = (v) => (ATTEND_STATUS.find((s) => s.value === v) || {}).color || "#90A4AE";
+
+export const GUEST_REASONS = ["অতিথি", "মেহমান", "কর্মচারী", "অনুষ্ঠান", "অন্যান্য"];
+export const approvalLabel = (v) => (v === "approved" ? "অনুমোদিত" : "খসড়া");
+export const approvalColor = (v) => (v === "approved" ? "#2E7D32" : "#90A4AE");
+
 // ছবি ছোট thumbnail-এ resize করে dataURL (renderer-এ, native lib ছাড়া)
 export function resizeImage(file, max = 220) {
   return new Promise((resolve, reject) => {

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { PageHeader, DataTable, StatCard, StatRow, Badge, Button, useToast } from "../../ui";
 import { mealList } from "../../data";
-import { bn, todayISO, MEALS, DIET_TYPES } from "./constants";
+import { bn, todayISO, MEALS, DIET_TYPES, attendLabel, attendColor } from "./constants";
+import ShareModal from "./ShareModal";
 
 const DIET_COLOR = { normal: "#2E7D32", special: "#EF6C00", sick: "#E53935", vip: "#6A1B9A" };
 const dietLabel = (v) => (DIET_TYPES.find((d) => d.value === v) || DIET_TYPES[0]).label;
@@ -20,6 +21,7 @@ export default function MealList({ nav, icon }) {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [diet, setDiet] = useState("");
+  const [share, setShare] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,7 +69,7 @@ export default function MealList({ nav, icon }) {
       if (r.note) parts.push(r.note);
       return parts.length ? <span style={{ color: r.allergy ? "#E53935" : "#556" }}>{parts.join(" · ")}</span> : <span style={{ color: "#9aa" }}>—</span>;
     }, exportValue: (r) => [r.allergy, r.note].filter(Boolean).join(" · ") },
-    { key: "attendance", label: "হাজিরা", align: "center", render: () => <Badge color="#90A4AE">অপেক্ষমাণ</Badge>, exportValue: () => "অপেক্ষমাণ" },
+    { key: "attendance", label: "হাজিরা", align: "center", render: (r) => <Badge color={attendColor(r.attendance)}>{attendLabel(r.attendance)}</Badge>, exportValue: (r) => attendLabel(r.attendance) },
   ];
 
   const printList = () => {
@@ -99,6 +101,12 @@ export default function MealList({ nav, icon }) {
     { label: "বিশেষ ডায়েট", value: bn(s.special), icon: "🥗", color: "#E53935" },
   ];
 
+  const shareText = () => {
+    const s = data.summary;
+    const names = filtered.slice(0, 60).map((r, i) => `${bn(i + 1)}. ${r.name}`).join("\n");
+    return `🍽️ মিল তালিকা\n📅 ${date} • ${mealMeta ? mealMeta.label : meal}\n\n👥 মোট মিল: ${bn(filtered.length)}\n🏠 বাড়ির খাবার: ${bn(s.home)}\n⏸ বিরত: ${bn(s.paused)}\n👤 গেস্ট: ${bn(s.guest || 0)}\n${data.holiday ? "\n🏖️ ছুটি: " + data.holiday.title + "\n" : ""}\n${names}`;
+  };
+
   const tabBtn = (m) => (
     <button key={m.key} type="button" onClick={() => setMeal(m.key)} style={{
       padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 700,
@@ -112,6 +120,7 @@ export default function MealList({ nav, icon }) {
       <PageHeader icon={icon} title="স্মার্ট মিল তালিকা" description="প্রোফাইল, বিরতি, বাড়ির খাবার ও ছুটি থেকে স্বয়ংক্রিয়ভাবে তৈরি (কোথাও সংরক্ষণ হয় না)" onBack={nav.onBack} breadcrumb={nav.crumbs}
         actions={<>
           <Button variant="secondary" onClick={load} icon="↻">রিফ্রেশ</Button>
+          <Button variant="secondary" onClick={() => setShare(shareText())} icon="📤">পাঠান</Button>
           <Button onClick={printList} icon="🖨">প্রিন্ট</Button>
         </>} />
 
@@ -138,6 +147,8 @@ export default function MealList({ nav, icon }) {
 
       <DataTable columns={columns} rows={filtered} loading={loading} exportName={`meal-list-${date}-${meal}`}
         empty={{ icon: "🍽️", title: "এই বেলায় কোনো মিল নেই", description: data.holiday ? "ছুটির কারণে বন্ধ" : "প্রোফাইল/তারিখ পরীক্ষা করুন" }} />
+
+      {share && <ShareModal title="মিল তালিকা পাঠান" text={share} onClose={() => setShare(null)} />}
     </div>
   );
 }

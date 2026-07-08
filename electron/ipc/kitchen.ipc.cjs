@@ -17,6 +17,9 @@ const store = require("../db/repositories/store.repo.cjs");
 const purchase = require("../db/repositories/purchase.repo.cjs");
 const market = require("../db/repositories/market.repo.cjs");
 const dashboard = require("../db/repositories/kitchenDashboard.repo.cjs");
+const mealAttendance = require("../db/repositories/mealAttendance.repo.cjs");
+const guestMeal = require("../db/repositories/guestMeal.repo.cjs");
+const mealApproval = require("../db/repositories/mealApproval.repo.cjs");
 
 function register() {
   // Phase 1
@@ -76,6 +79,19 @@ function register() {
   ipcMain.handle("kitchen_report:purchase", (_e, { from, to }) => reports.purchaseReport(from, to));
   ipcMain.handle("kitchen_report:cost", (_e, { from, to }) => reports.costAnalysis(from, to));
   ipcMain.handle("kitchen_dash:overview", () => dashboard.overview());
+
+  // Phase 4 — মিল হাজিরা
+  ipcMain.handle("meal_attendance:get", (_e, { date, mealType }) => mealAttendance.getForMeal(date, mealType));
+  ipcMain.handle("meal_attendance:save", (_e, { date, mealType, records }) => mealAttendance.saveForMeal(date, mealType, records));
+  ipcMain.handle("meal_attendance:summary", (_e, { date, mealType }) => mealAttendance.summary(date, mealType));
+
+  // Phase 4 — গেস্ট মিল (factory CRUD)
+  registerCrud("guest_meal", guestMeal);
+
+  // Phase 4 — মিল অনুমোদন
+  ipcMain.handle("meal_approval:status", (_e, { date, mealType }) => mealApproval.status(date, mealType));
+  ipcMain.handle("meal_approval:approve", (_e, { date, mealType, meta }) => mealApproval.approve(date, mealType, meta || {}));
+  ipcMain.handle("meal_approval:revert", (_e, { date, mealType }) => mealApproval.revert(date, mealType));
 }
 
 module.exports = { register };

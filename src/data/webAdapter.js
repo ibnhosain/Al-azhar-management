@@ -43,6 +43,12 @@ export async function webCall(channel, payload) {
     return { web: true, unsupported: true };
   }
 
+  // Auto Update — শুধু ডেস্কটপ (Electron) অ্যাপে; ওয়েবে নিষ্ক্রিয়
+  if (resource === "updater") {
+    if (action === "version") return "web";
+    return { web: true, unsupported: true };
+  }
+
   // Kitchen — ওয়েবে সীমিত (Electron-primary)
   if (resource === "meal_profile") {
     if (action === "list") return [];
@@ -96,6 +102,14 @@ export async function webCall(channel, payload) {
   if (resource === "kitchen_dash") {
     if (action === "overview") return { today: "", tomorrow: "", todayMenus: [], tomorrowMenus: [], low: [], store: { itemCount: 0, lowCount: 0, totalValue: 0, txnCount: 0 }, recentPurchases: [], recentTxns: [], counts: { dishes: 0, ingredients: 0, suppliers: 0, menus: 0 } };
     return {};
+  }
+  // Phase 4 — meal attendance / approval (guest_meal uses generic CRUD below)
+  if (resource === "meal_attendance") {
+    if (action === "get") return [];
+    return { present: 0, absent: 0, leave: 0, total: 0 }; // save / summary
+  }
+  if (resource === "meal_approval") {
+    return { approval: null, status: "draft", present: 0, absent: 0, leave: 0, guest: 0, total: 0, hasMenu: false, menuTitle: null, consumption: [] };
   }
 
   // বোর্ডিং বাজার (custom — header + items)

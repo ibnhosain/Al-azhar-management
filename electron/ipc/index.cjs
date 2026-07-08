@@ -7,6 +7,7 @@ const attendance = require("./attendance.ipc.cjs");
 const boardingBazar = require("./boardingBazar.ipc.cjs");
 const backupIpc = require("./backup.ipc.cjs");
 const kitchen = require("./kitchen.ipc.cjs");
+const updater = require("../services/updater.service.cjs");
 const { registerCrud } = require("./crud.ipc.cjs");
 const repos = require("../db/repositories/index.cjs");
 const boardingExpenseRepo = require("../db/repositories/boardingExpense.repo.cjs");
@@ -34,6 +35,9 @@ function registerIpc() {
 
   // Kitchen & Meal (Phase 1)
   kitchen.register();
+
+  // Auto Update (electron-updater / GitHub Releases)
+  updater.register();
 }
 
 module.exports = { registerIpc };

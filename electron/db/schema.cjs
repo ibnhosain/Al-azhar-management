@@ -328,6 +328,58 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(p_date);
     `);
   },
+
+  // ── v9: মিল অপারেশন — হাজিরা / গেস্ট মিল / অনুমোদন ──
+  //  অনুমোদন করলে ঐ বেলার প্রকৃত সংখ্যা (হাজির+গেস্ট) × রেসিপি অনুযায়ী
+  //  store_transactions-এ 'out' (consumption) পোস্ট হয় (ref_id = approval id)।
+  function v9(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS meal_attendance (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        m_date         TEXT NOT NULL,
+        meal_type      TEXT NOT NULL,
+        student_id     INTEGER REFERENCES students(id) ON DELETE CASCADE,
+        student_code   TEXT,
+        student_name   TEXT,
+        status         TEXT NOT NULL DEFAULT 'present',
+        note           TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS guest_meals (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        g_date         TEXT NOT NULL,
+        meal_type      TEXT NOT NULL,
+        guest_count    INTEGER NOT NULL DEFAULT 0,
+        guest_name     TEXT,
+        reason         TEXT,
+        note           TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE IF NOT EXISTS meal_approvals (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        m_date         TEXT NOT NULL,
+        meal_type      TEXT NOT NULL,
+        status         TEXT NOT NULL DEFAULT 'draft',
+        present_count  INTEGER NOT NULL DEFAULT 0,
+        guest_count    INTEGER NOT NULL DEFAULT 0,
+        total_count    INTEGER NOT NULL DEFAULT 0,
+        approved_by    TEXT,
+        approved_at    TEXT,
+        note           TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_mattend_dm ON meal_attendance(m_date, meal_type);
+      CREATE INDEX IF NOT EXISTS idx_mattend_student ON meal_attendance(student_id);
+      CREATE INDEX IF NOT EXISTS idx_guest_dm ON guest_meals(g_date, meal_type);
+      CREATE INDEX IF NOT EXISTS idx_approval_dm ON meal_approvals(m_date, meal_type);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

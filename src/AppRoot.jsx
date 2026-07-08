@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import App from "./App.jsx";
 import FirstRunSetup from "./modules/settings/FirstRunSetup";
+import UpdateNotifier from "./modules/settings/UpdateNotifier";
 import { backup, environment } from "./data";
 
 // অ্যাপের প্রবেশদ্বার: Electron-এ প্রথম রানে সেটআপ স্ক্রিন, নাহলে মূল অ্যাপ।
@@ -24,5 +25,10 @@ export default function AppRoot() {
 
   if (phase === "loading") return null;
   if (phase === "setup") return <FirstRunSetup onDone={() => setPhase("app")} />;
-  return <App />;
+  return (
+    <>
+      <App />
+      <UpdateNotifier />
+    </>
+  );
 }

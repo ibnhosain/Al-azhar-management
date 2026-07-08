@@ -9,6 +9,7 @@ export { teachers } from "./teachers";
 export { attendance } from "./attendance";
 export { boardingBazar } from "./boardingBazar";
 export { backup } from "./backup";
+export { updater } from "./updater";
 export { environment, call } from "./client";
 export { seedResource } from "./webAdapter";
 
@@ -58,3 +59,8 @@ export { store } from "./store";
 export { purchases } from "./purchases";
 export { market } from "./market";
 export { kitchenDashboard } from "./kitchenDashboard";
+
+// schema v9 — Kitchen মিল অপারেশন (হাজিরা / গেস্ট / অনুমোদন)
+export const guestMeals = makeCrud("guest_meal");
+export { mealAttendance } from "./mealAttendance";
+export { mealApproval } from "./mealApproval";
