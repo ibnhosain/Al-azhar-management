@@ -109,6 +109,43 @@ function install() {
   return { ok: true };
 }
 
+// ── Startup gate: অ্যাপ খোলার আগেই আপডেট নেওয়া (forced update on launch) ──
+//  প্রকাশিত সংস্করণে: চেক → আপডেট থাকলে splash-এ ডাউনলোড → নীরবে ইনস্টল + রিলঞ্চ।
+//  অফলাইন / চেক-টাইমআউট / ত্রুটি হলে ব্লক না করে অ্যাপ স্বাভাবিকভাবে খোলে।
+//  ফেরত: Promise<'proceed'|'updating'>  ('updating' হলে অ্যাপ quit হয়ে নতুনটা চালু হবে)।
+function startupUpdateGate(onStatus, opts = {}) {
+  const emit = (s) => { try { onStatus && onStatus(s); } catch { /* ignore */ } };
+  const checkTimeout = opts.checkTimeoutMs || 9000;      // চেক ফেজে সর্বোচ্চ অপেক্ষা
+  const downloadTimeout = opts.downloadTimeoutMs || 240000; // ডাউনলোড হ্যাং হলে নিরাপত্তা
+  return new Promise((resolve) => {
+    if (!app.isPackaged) { emit({ status: "dev" }); return resolve("proceed"); }
+    autoUpdater.autoDownload = true;
+    let settled = false, timer = null;
+    const off = () => {
+      autoUpdater.removeListener("update-available", onAvail);
+      autoUpdater.removeListener("update-not-available", onNone);
+      autoUpdater.removeListener("error", onErr);
+      autoUpdater.removeListener("download-progress", onProg);
+      autoUpdater.removeListener("update-downloaded", onDone);
+      if (timer) clearTimeout(timer);
+    };
+    const finish = (r) => { if (settled) return; settled = true; off(); resolve(r); };
+    function onAvail(i) { emit({ status: "available", version: i.version, size: (i.files && i.files[0] && i.files[0].size) || null }); if (timer) clearTimeout(timer); timer = setTimeout(() => { emit({ status: "timeout" }); finish("proceed"); }, downloadTimeout); }
+    function onNone() { emit({ status: "up-to-date" }); finish("proceed"); }
+    function onErr(e) { emit({ status: "error", message: friendlyError(e) }); finish("proceed"); }
+    function onProg(p) { emit({ status: "downloading", percent: Math.round(p.percent || 0), transferred: p.transferred, total: p.total, bytesPerSecond: p.bytesPerSecond }); }
+    function onDone() { emit({ status: "installing" }); if (settled) return; settled = true; off(); resolve("updating"); setImmediate(() => { try { autoUpdater.quitAndInstall(true, true); } catch { /* ignore */ } }); }
+    autoUpdater.on("update-available", onAvail);
+    autoUpdater.once("update-not-available", onNone);
+    autoUpdater.on("error", onErr);
+    autoUpdater.on("download-progress", onProg);
+    autoUpdater.once("update-downloaded", onDone);
+    emit({ status: "checking" });
+    timer = setTimeout(() => { emit({ status: "timeout" }); finish("proceed"); }, checkTimeout);
+    autoUpdater.checkForUpdates().catch((e) => { emit({ status: "error", message: friendlyError(e) }); finish("proceed"); });
+  });
+}
+
 function register() {
   ipcMain.handle("updater:check", () => check(true));
   ipcMain.handle("updater:download", () => download());
@@ -118,4 +155,4 @@ function register() {
   ipcMain.handle("updater:version", () => app.getVersion());
 }
 
-module.exports = { init, register, check };
+module.exports = { init, register, check, startupUpdateGate };
