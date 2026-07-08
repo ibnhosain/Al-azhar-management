@@ -6,7 +6,9 @@
 //  ডেটাবেস (D:\BustanulIslam\Data), Photos, Backup, Config, Documents ও
 //  ভবিষ্যতের Attachment ইনস্টল ফোল্ডারের বাইরে → আপডেটে কখনো স্পর্শ হয় না।
 //
-//  autoDownload=false → ব্যবহারকারীর সম্মতিতে ডাউনলোড।
+//  autoDownload=true → অ্যাপ চালুতে আপডেট পেলে ব্যাকগ্রাউন্ডে নিজে ডাউনলোড হয়;
+//  autoInstallOnAppQuit=true → ডাউনলোড শেষে অ্যাপ বন্ধ করলে নিজে ইনস্টল হয়
+//  (ব্যবহারকারী চাইলে "রিস্টার্ট ও ইনস্টল"-এ সাথে সাথেও পারে)। সম্পূর্ণ hands-free।
 //  ইভেন্ট renderer-এ "updater:event" চ্যানেলে যায় (preload bridge)।
 //  Pause/Resume: CancellationToken দিয়ে ডাউনলোড থামানো/পুনরায় শুরু।
 //  Feed provider configurable (update.config.cjs) — পরে custom server।
@@ -38,8 +40,8 @@ const sizeOf = (info) => (info && info.files && info.files[0] && info.files[0].s
 function wireEvents() {
   if (wired) return;
   wired = true;
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoDownload = true;            // চালুতে আপডেট পেলে নিজে ডাউনলোড
+  autoUpdater.autoInstallOnAppQuit = true;    // অ্যাপ বন্ধ করলে নিজে ইনস্টল
   autoUpdater.allowPrerelease = false;
   try { autoUpdater.setFeedURL(getProvider()); } catch { /* electron-builder app-update.yml fallback */ }
 

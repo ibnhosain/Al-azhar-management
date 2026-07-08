@@ -5,7 +5,7 @@
 //
 //  custom server:  UPDATE_PROVIDER=generic  UPDATE_URL=https://updates.example.com
 // ────────────────────────────────────────────────────────────────
-const GITHUB = { provider: "github", owner: "ibnhosain", repo: "Al-Azhar-management" };
+const GITHUB = { provider: "github", owner: "ibnhosain", repo: "Al-azhar-management" };
 
 function getProvider() {
   if (process.env.UPDATE_PROVIDER === "generic" && process.env.UPDATE_URL) {

@@ -32,7 +32,7 @@ asarUnpack:
 publish:
   provider: github
   owner: ibnhosain
-  repo: Al-Azhar-management
+  repo: Al-azhar-management
 
 win:
   target:
