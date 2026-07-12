@@ -17,4 +17,4 @@ export { ToastProvider } from "./Toast";
 export { useToast } from "./ToastContext";
 export { default as Modal } from "./Modal";
 export { default as DataTable } from "./DataTable";
-export { TextField, MoneyField, SelectField, TextareaField, DateField } from "./Field";
+export { TextField, MoneyField, SelectField, ComboField, TextareaField, DateField } from "./Field";

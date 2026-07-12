@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { colors, radius, font } from "./theme";
 
 const baseInput = {
@@ -79,6 +79,23 @@ export function SelectField({ label, value = "", onChange, required, error, opti
         })}
       </select>
       <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: colors.textMuted }}>▾</span>
+    </Wrapper>
+  );
+}
+
+// এডিটযোগ্য ড্রপডাউন: তালিকা থেকে বাছা যায় আবার নিজে টাইপও করা যায় (input + datalist)।
+export function ComboField({ label, value = "", onChange, required, error, options = [], disabled, placeholder }) {
+  const ime = useImeInput(value, onChange);
+  const listId = useId();
+  return (
+    <Wrapper label={label} required={required} error={error}>
+      <input
+        className={"uk-input" + (error ? " uk-invalid" : "")} list={listId} {...ime}
+        disabled={disabled} placeholder={placeholder} autoComplete="off" style={baseInput}
+      />
+      <datalist id={listId}>
+        {options.map((o) => { const v = typeof o === "object" ? o.value : o; return <option key={v} value={v} />; })}
+      </datalist>
     </Wrapper>
   );
 }

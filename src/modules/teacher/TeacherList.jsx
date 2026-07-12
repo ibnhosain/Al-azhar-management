@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { PageHeader, DataTable, StatCard, StatRow, Badge, Button, Modal, useToast, TextField, SelectField, DateField, TextareaField } from "../../ui";
+import { PageHeader, DataTable, StatCard, StatRow, Badge, Button, Modal, useToast, TextField, SelectField, ComboField, DateField, TextareaField } from "../../ui";
 import { teachers as teachersApi } from "../../data";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
@@ -138,7 +138,7 @@ export default function TeacherList() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>
             <TextField label="আইডি" value={form.code || ""} onChange={(v) => set("code", v)} />
             <TextField label="পূর্ণ নাম *" value={form.name} onChange={(v) => set("name", v)} />
-            <SelectField label="পদবি" value={form.designation} onChange={(v) => set("designation", v)} options={DESIGNATIONS} />
+            <ComboField label="পদবি (বাছুন বা নিজে লিখুন)" value={form.designation} onChange={(v) => set("designation", v)} options={DESIGNATIONS} />
             <TextField label="বিষয়" value={form.subject} onChange={(v) => set("subject", v)} />
             <TextField label="শিক্ষাগত যোগ্যতা" value={form.qualification} onChange={(v) => set("qualification", v)} />
             <TextField label="ফোন নম্বর" value={form.phone} onChange={(v) => set("phone", v)} />

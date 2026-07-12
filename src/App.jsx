@@ -562,7 +562,7 @@ function Finance() {
           <FormRow label="শিরোনাম"><input style={inputStyle} value={form.title} onChange={e => setForm({...form,title:e.target.value})} placeholder="খরচের বিবরণ"/></FormRow>
           <FormRow label="পরিমাণ"><input style={inputStyle} value={form.amount} onChange={e => setForm({...form,amount:e.target.value})} placeholder="যেমন: ৳৫০০"/></FormRow>
           <FormRow label="তারিখ"><input type="date" style={inputStyle} value={form.date} onChange={e => setForm({...form,date:e.target.value})}/></FormRow>
-          <FormRow label="ক্যাটাগরি"><select style={inputStyle} value={form.category} onChange={e => setForm({...form,category:e.target.value})}><option>বেতন</option><option>ইউটিলিটি</option><option>রক্ষণাবেক্ষণ</option><option>শিক্ষা উপকরণ</option><option>অন্যান্য</option></select></FormRow>
+          <FormRow label="ক্যাটাগরি (বাছুন বা নিজে লিখুন)"><input list="fin-cats" style={inputStyle} value={form.category} onChange={e => setForm({...form,category:e.target.value})} placeholder="যেমন: মাদরাসা উন্নয়ন" autoComplete="off" /><datalist id="fin-cats"><option>বেতন</option><option>ইউটিলিটি (বিদ্যুৎ/পানি/গ্যাস)</option><option>রক্ষণাবেক্ষণ</option><option>শিক্ষা উপকরণ</option><option>মাদরাসা উন্নয়ন</option><option>মাদরাসা সংক্রান্ত</option><option>নির্মাণ/সংস্কার</option><option>ভাড়া</option><option>দাওয়াত/মেহমান</option><option>যাতায়াত</option><option>অন্যান্য</option></datalist></FormRow>
           <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
             <button onClick={() => setModal(false)} style={btn("#9E9E9E")}>বাতিল</button>
             <button onClick={save} style={btn()}>সংরক্ষণ করুন</button>
