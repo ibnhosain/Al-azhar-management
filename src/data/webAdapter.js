@@ -49,6 +49,16 @@ export async function webCall(channel, payload) {
     return { web: true, unsupported: true };
   }
 
+  // বেতন ব্যবস্থাপনা (মানি রিসিট)
+  if (resource === "fee_receipt") {
+    if (action === "list" || action === "dues") return [];
+    if (action === "totals") return { amount: 0, received: 0, discount: 0, due: 0, count: 0 };
+    if (action === "get") return null;
+    if (action === "create") return payload || {};
+    if (action === "delete") return { id: payload };
+    return null;
+  }
+
   // Kitchen — ওয়েবে সীমিত (Electron-primary)
   if (resource === "meal_profile") {
     if (action === "list") return [];

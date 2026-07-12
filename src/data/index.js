@@ -10,6 +10,7 @@ export { attendance } from "./attendance";
 export { boardingBazar } from "./boardingBazar";
 export { backup } from "./backup";
 export { updater } from "./updater";
+export { feeReceipts } from "./feeReceipts";
 export { environment, call } from "./client";
 export { seedResource } from "./webAdapter";
 

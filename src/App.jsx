@@ -9,6 +9,9 @@ import {
 } from "./data";
 import BoardingModule from "./modules/boarding/BoardingModule";
 import KitchenModule from "./modules/kitchen/KitchenModule";
+import StudentAdmission from "./modules/student/StudentAdmission";
+import StudentList from "./modules/student/StudentList";
+import StudentFee from "./modules/student/StudentFee";
 import BackupRestore from "./modules/settings/BackupRestore";
 import AutoUpdate from "./modules/settings/AutoUpdate";
 
@@ -412,99 +415,6 @@ function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ──────────────────────── PAGE: STUDENTS ────────────────────────
-function Students() {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
-  const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ name:"", class:"নার্সারি গ্রুপ", roll:"", gender:"ছাত্র", fee:"", status:"সক্রিয়" });
-
-  const reload = async () => {
-    setStudents(await studentsApi.list());
-    setLoading(false);
-  };
-
-  // প্রথম লোড: ওয়েবে ডেমো ডেটা seed (Electron-এ DB নিজেই seed করে), তারপর তালিকা আনা
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (environment === "web") {
-        seedResource("students", initStudents.map(s => ({
-          code:s.id, name:s.name, class:s.class, roll:s.roll, gender:s.gender, fee:s.fee, status:s.status,
-        })));
-      }
-      const rows = await studentsApi.list();
-      if (alive) { setStudents(rows); setLoading(false); }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  const filtered = students.filter(s => s.name.includes(search) || String(s.code||"").includes(search));
-
-  // নতুন আইডি: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন STD-006)
-  const nextCode = () => {
-    const nums = students.map(s => parseInt(String(s.code||"").replace(/\D/g,""),10)).filter(n => !isNaN(n));
-    return "STD-" + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,"0");
-  };
-
-  const save = async () => {
-    if (!form.name || !form.roll) return alert("নাম ও রোল নম্বর আবশ্যক");
-    await studentsApi.create({ ...form, code: nextCode() });
-    setModal(false);
-    setForm({ name:"", class:"নার্সারি গ্রুপ", roll:"", gender:"ছাত্র", fee:"", status:"সক্রিয়" });
-    await reload();
-  };
-
-  const del = async (id) => { await studentsApi.remove(id); await reload(); };
-
-  return (
-    <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-        <div style={sectionTitle}>শিক্ষার্থী ব্যবস্থাপনা <span style={badge("#00BCD4")}>মোট: {students.length}</span></div>
-        <button onClick={() => setModal(true)} style={btn()}>+ নতুন শিক্ষার্থী</button>
-      </div>
-      <div style={{ ...card }}>
-        <input placeholder="নাম বা আইডি দিয়ে খুঁজুন..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, marginBottom:14, width:280 }}/>
-        <table style={tbl}>
-          <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>শ্রেণি</th><th style={th}>রোল</th><th style={th}>লিঙ্গ</th><th style={th}>ফি</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
-          <tbody>
-            {loading ? (
-              <tr><td style={td} colSpan={8}>লোড হচ্ছে...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td style={td} colSpan={8}>কোনো শিক্ষার্থী পাওয়া যায়নি</td></tr>
-            ) : filtered.map((s) => (
-              <tr key={s.id}>
-                <td style={td}>{s.code}</td>
-                <td style={td}>{s.name}</td>
-                <td style={td}>{s.class}</td>
-                <td style={td}>{s.roll}</td>
-                <td style={td}>{s.gender}</td>
-                <td style={td}>{s.fee}</td>
-                <td style={td}><span style={badge(s.status==="সক্রিয়"?"#4CAF50":"#F44336")}>{s.status}</span></td>
-                <td style={td}><button onClick={() => del(s.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {modal && (
-        <Modal title="নতুন শিক্ষার্থী ভর্তি" onClose={() => setModal(false)}>
-          <FormRow label="পূর্ণ নাম"><input style={inputStyle} value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="শিক্ষার্থীর নাম"/></FormRow>
-          <FormRow label="শ্রেণি"><select style={inputStyle} value={form.class} onChange={e => setForm({...form,class:e.target.value})}><option>নার্সারি গ্রুপ</option><option>১ম শ্রেণি</option><option>২য় শ্রেণি</option><option>১ম বর্ষ</option><option>নাজেরা বিভাগ</option></select></FormRow>
-          <FormRow label="রোল নম্বর"><input style={inputStyle} value={form.roll} onChange={e => setForm({...form,roll:e.target.value})} placeholder="রোল নম্বর"/></FormRow>
-          <FormRow label="লিঙ্গ"><select style={inputStyle} value={form.gender} onChange={e => setForm({...form,gender:e.target.value})}><option>ছাত্র</option><option>ছাত্রী</option></select></FormRow>
-          <FormRow label="মাসিক ফি"><input style={inputStyle} value={form.fee} onChange={e => setForm({...form,fee:e.target.value})} placeholder="যেমন: ৳৫০০"/></FormRow>
-          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
-            <button onClick={() => setModal(false)} style={{ ...btn("#9E9E9E") }}>বাতিল</button>
-            <button onClick={save} style={btn()}>সংরক্ষণ করুন</button>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -1814,13 +1724,76 @@ const menuItems = [
   { icon:"🍳", label:"রান্নাঘর ও মিল" },
 ];
 
+// ──────────────────────── শিক্ষার্থী ব্যবস্থাপনা মডিউল (কার্ড-গ্রিড) ────────────────────────
+const STUDENT_TILES = [
+  { key:"admission",  icon:"🧑‍🎓", label:"ভর্তি" },
+  { key:"list",       icon:"📋",   label:"শিক্ষার্থীর তালিকা" },
+  { key:"roll",       icon:"🔢",   label:"রোল বিন্যাস" },
+  { key:"dakhela",    icon:"🗂️",   label:"দাখেলা বিন্যাস" },
+  { key:"inactive",   icon:"🚫",   label:"নিষ্ক্রিয় শিক্ষার্থী" },
+  { key:"idcard",     icon:"🪪",   label:"শিক্ষার্থী আইডি কার্ড" },
+  { key:"fee",        icon:"💵",   label:"বেতন ব্যবস্থাপনা" },
+  { key:"homework",   icon:"📖",   label:"দৈনিক বাড়ির কাজ" },
+  { key:"attendance", icon:"🕒",   label:"শিক্ষার্থী হাজিরা" },
+];
+
+function StudentTile({ tile, onClick }) {
+  const [h, setH] = useState(false);
+  return (
+    <div onClick={onClick} onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
+      style={{
+        background:"#fff", borderRadius:14, padding:"30px 18px", textAlign:"center", cursor:"pointer",
+        border:"1px solid #e7eee7", borderTop:"3px solid #C9A227",
+        boxShadow: h ? "0 8px 22px rgba(27,77,62,.13)" : "0 1px 4px rgba(0,0,0,.04)",
+        transform: h ? "translateY(-3px)" : "none", transition:"all .15s ease",
+      }}>
+      <div style={{ width:66, height:66, borderRadius:"50%", margin:"0 auto 14px",
+        background:"#F3ECD9", color:"#B7912F", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30 }}>{tile.icon}</div>
+      <div style={{ fontWeight:700, color:"#1b4d3e", fontSize:15 }}>{tile.label}</div>
+    </div>
+  );
+}
+
+function StudentModule() {
+  const [view, setView] = useState("landing");
+
+  if (view !== "landing") {
+    const tile = STUDENT_TILES.find((t) => t.key === view);
+    // ভর্তি ফরম ও তালিকা নিজস্ব হেডার/back রাখে → সরাসরি render
+    if (view === "admission") return <StudentAdmission onBack={() => setView("landing")} />;
+    if (view === "list") return <StudentList onBack={() => setView("landing")} />;
+    if (view === "fee") return <StudentFee onBack={() => setView("landing")} />;
+    let content;
+    if (view === "attendance") content = <Attendance/>;
+    else content = <div style={{ ...card, textAlign:"center", padding:"50px 20px", color:"#78909C" }}>“{tile.label}” — পরবর্তী ধাপে যুক্ত হবে।</div>;
+    return (
+      <div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <div style={sectionTitle}>{tile.label}</div>
+          <button onClick={() => setView("landing")} style={btn("#546E7A")}>← ফিরে যান</button>
+        </div>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={sectionTitle}>শিক্ষার্থী ব্যবস্থাপনা</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(215px,1fr))", gap:18, marginTop:14 }}>
+        {STUDENT_TILES.map((t) => <StudentTile key={t.key} tile={t} onClick={() => setView(t.key)} />)}
+      </div>
+    </div>
+  );
+}
+
 // ──────────────────────── PAGE ROUTER ────────────────────────
 function PageContent({ index, onDashboard }) {
   switch(index) {
     case -1: return <Dashboard/>;
     case 0: return <Settings/>;
     case 1: return <Attendance/>;
-    case 2: return <Students/>;
+    case 2: return <StudentModule/>;
     case 3: return <Academic/>;
     case 4: return <Promotion/>;
     case 5: return <Teachers/>;

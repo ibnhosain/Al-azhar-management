@@ -380,6 +380,45 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_approval_dm ON meal_approvals(m_date, meal_type);
     `);
   },
+
+  // ── v10: শিক্ষার্থী ভর্তি ফরমের বাড়তি তথ্য (পিতা/মাতা/অভিভাবক/ঠিকানা/ছবি…)
+  //  core কলাম (code/name/class/roll/gender/fee/status) অপরিবর্তিত; বাকি সব
+  //  একটি JSON কলাম `extra`-তে রাখা হয় (নমনীয়, ভবিষ্যতে ফিল্ড বাড়ানো সহজ)।
+  function v10(db) {
+    const cols = db.all("PRAGMA table_info(students)").map((c) => c.name);
+    if (!cols.includes("extra")) db.exec("ALTER TABLE students ADD COLUMN extra TEXT");
+  },
+
+  // ── v11: বেতন ব্যবস্থাপনা — মানি রিসিট (fee_receipts)।
+  //  প্রতিটি রিসিটে এক ছাত্রের এক মাসের ফি আইটেমসমূহ (JSON) + মোট হিসাব।
+  function v11(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS fee_receipts (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        receipt_no     TEXT,
+        student_id     INTEGER REFERENCES students(id) ON DELETE CASCADE,
+        student_code   TEXT,
+        student_name   TEXT,
+        class          TEXT,
+        section        TEXT,
+        student_type   TEXT,
+        month          TEXT,
+        year           TEXT,
+        items          TEXT,
+        total_amount   REAL DEFAULT 0,
+        total_received REAL DEFAULT 0,
+        total_discount REAL DEFAULT 0,
+        total_due      REAL DEFAULT 0,
+        collector      TEXT,
+        note           TEXT,
+        r_date         TEXT,
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_fee_month ON fee_receipts(month);
+      CREATE INDEX IF NOT EXISTS idx_fee_student ON fee_receipts(student_id);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।
