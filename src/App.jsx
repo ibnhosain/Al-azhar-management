@@ -1526,8 +1526,8 @@ function StudentTile({ tile, onClick }) {
   );
 }
 
-function StudentModule() {
-  const [view, setView] = useState("landing");
+function StudentModule({ initialView }) {
+  const [view, setView] = useState(initialView || "landing");
 
   if (view !== "landing") {
     const tile = STUDENT_TILES.find((t) => t.key === view);
@@ -1560,12 +1560,12 @@ function StudentModule() {
 }
 
 // ──────────────────────── PAGE ROUTER ────────────────────────
-function PageContent({ index, onNavigate }) {
+function PageContent({ index, sub, onNavigate }) {
   switch(index) {
     case -1: return <Dashboard/>;
     case 0: return <Settings/>;
     case 1: return <Attendance/>;
-    case 2: return <StudentModule/>;
+    case 2: return <StudentModule initialView={sub}/>;
     case 3: return <Academic/>;
     case 4: return <Promotion/>;
     case 5: return <TeacherList/>;
@@ -1592,9 +1592,11 @@ export default function App() {
   const [fabOpen, setFabOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [navSeq, setNavSeq] = useState(0); // প্রতি মেনু-ক্লিকে বাড়ে → পেজ fresh রিমাউন্ট
+  const [navSub, setNavSub] = useState(null); // মেনুর ভেতরের নির্দিষ্ট সাব-ভিউ (যেমন সরাসরি বেতন পোর্টাল)
 
-  const goTo = (menuIndex) => {
+  const goTo = (menuIndex, sub = null) => {
     setActiveMenu(menuIndex);
+    setNavSub(sub);
     setNavSeq(n => n + 1);
     setFabOpen(false);
   };
@@ -1659,7 +1661,7 @@ export default function App() {
 
         {/* Content */}
         <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-          <PageContent index={activeMenu} onNavigate={goTo} key={navSeq}/>
+          <PageContent index={activeMenu} sub={navSub} onNavigate={goTo} key={navSeq}/>
           {/* Footer */}
           <div style={{ borderTop:"1px solid #E8ECEF", marginTop:8, padding:"16px 0", textAlign:"center" }}>
             <div style={{ fontSize:13, color:"#78909C" }}>© {new Date().getFullYear()} মাদরাসাতুল আযহার আল-আরাবিয়া। সর্বস্বত্ব সংরক্ষিত।</div>

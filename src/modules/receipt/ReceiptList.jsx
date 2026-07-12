@@ -13,7 +13,7 @@ const TYPE_COLOR = { "বেতন": "#2E7D32", "ভর্তি": "#1565C0", "�
 
 // সংশ্লিষ্ট মেনুর সূচক (App.jsx menuItems অনুযায়ী)
 const RELATED = [
-  { icon: "💵", label: "বেতন ব্যবস্থাপনা", desc: "ফি আদায় → এখানে রশিদ আসে", menu: 2, color: "#2E7D32" },
+  { icon: "💵", label: "বেতন ব্যবস্থাপনা", desc: "ফি আদায় → এখানে রশিদ আসে", menu: 2, sub: "fee", color: "#2E7D32" },
   { icon: "💰", label: "হিসাব ও অর্থ বিভাগ", desc: "রশিদ = আয়ের উৎস", menu: 7, color: "#00838F" },
   { icon: "🤝", label: "স্পনসর ও অনুদান", desc: "অনুদান/যাকাত রশিদ", menu: 9, color: "#AD1457" },
   { icon: "🏠", label: "বোর্ডিং ব্যবস্থাপনা", desc: "বোর্ডিং আয়", menu: 12, color: "#6A1B9A" },
@@ -177,7 +177,7 @@ export default function ReceiptList({ onNavigate }) {
           <div style={{ fontWeight: 700, color: "#243B40", marginBottom: 10, fontSize: 13 }}>🔗 সংশ্লিষ্ট মেনু</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 10 }}>
             {RELATED.map((m) => (
-              <div key={m.menu} onClick={() => onNavigate(m.menu)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "1px solid #e7eee7", borderLeft: `3px solid ${m.color}`, borderRadius: 10, cursor: "pointer", background: "#fff", transition: "box-shadow .15s" }}
+              <div key={m.menu} onClick={() => onNavigate(m.menu, m.sub)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "1px solid #e7eee7", borderLeft: `3px solid ${m.color}`, borderRadius: 10, cursor: "pointer", background: "#fff", transition: "box-shadow .15s" }}
                 onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 4px 14px rgba(27,77,62,.12)"}
                 onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}>
                 <span style={{ fontSize: 22 }}>{m.icon}</span>
