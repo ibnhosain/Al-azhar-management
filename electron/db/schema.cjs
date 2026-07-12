@@ -419,6 +419,12 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_fee_student ON fee_receipts(student_id);
     `);
   },
+
+  // ── v12: শিক্ষকের বাড়তি তথ্য (পদবি/যোগ্যতা/ইমেইল/যোগদান/ঠিকানা/ছবি) → extra JSON।
+  function v12(db) {
+    const cols = db.all("PRAGMA table_info(teachers)").map((c) => c.name);
+    if (!cols.includes("extra")) db.exec("ALTER TABLE teachers ADD COLUMN extra TEXT");
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
-  students as studentsApi, teachers as teachersApi, receipts as receiptsApi,
+  students as studentsApi, receipts as receiptsApi,
   expenses as expensesApi, notices as noticesApi,
   sponsors as sponsorsApi, loans as loansApi, orphans as orphansApi,
   academicResults as resultsApi, examRoutine as routineApi, promotions as promotionsApi, staff as staffApi,
@@ -12,6 +12,7 @@ import KitchenModule from "./modules/kitchen/KitchenModule";
 import StudentAdmission from "./modules/student/StudentAdmission";
 import StudentList from "./modules/student/StudentList";
 import StudentFee from "./modules/student/StudentFee";
+import TeacherList from "./modules/teacher/TeacherList";
 import BackupRestore from "./modules/settings/BackupRestore";
 import AutoUpdate from "./modules/settings/AutoUpdate";
 
@@ -77,15 +78,6 @@ const initStudents = [
   { id:"STD-003", name:"মোঃ রাফি আহমেদ", class:"২য় শ্রেণি", roll:"০৩", gender:"ছাত্র", fee:"৳৭০০", status:"সক্রিয়" },
   { id:"STD-004", name:"সুমাইয়া আক্তার", class:"নার্সারি গ্রুপ", roll:"০৪", gender:"ছাত্রী", fee:"৳৫০০", status:"নিষ্ক্রিয়" },
   { id:"STD-005", name:"মোঃ ইমরান খান", class:"১ম বর্ষ", roll:"০৫", gender:"ছাত্র", fee:"৳৮০০", status:"সক্রিয়" },
-];
-
-// ──────────────────────── TEACHERS DATA ────────────────────────
-const initTeachers = [
-  { id:"TCH-001", name:"মোঃ আবদুল করিম", subject:"আরবি", phone:"01711-000001", salary:"৳১৫,০০০", status:"সক্রিয়" },
-  { id:"TCH-002", name:"মোছা. রহিমা খাতুন", subject:"বাংলা", phone:"01711-000002", salary:"৳১২,০০০", status:"সক্রিয়" },
-  { id:"TCH-003", name:"মোঃ সালাহউদ্দিন", subject:"গণিত", phone:"01711-000003", salary:"৳১৩,০০০", status:"সক্রিয়" },
-  { id:"TCH-004", name:"মোছা. নাজমা বেগম", subject:"ইংরেজি", phone:"01711-000004", salary:"৳১২,৫০০", status:"ছুটিতে" },
-  { id:"TCH-005", name:"মোঃ হাফিজুর রহমান", subject:"হাদিস", phone:"01711-000005", salary:"৳১৪,০০০", status:"সক্রিয়" },
 ];
 
 // ──────────────────────── RECEIPTS DATA ────────────────────────
@@ -501,90 +493,6 @@ function Attendance() {
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-// ──────────────────────── PAGE: TEACHERS ────────────────────────
-function Teachers() {
-  const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ name:"", subject:"", phone:"", salary:"", status:"সক্রিয়" });
-
-  const reload = async () => {
-    setTeachers(await teachersApi.list());
-    setLoading(false);
-  };
-
-  // প্রথম লোড: ওয়েবে ডেমো ডেটা seed (Electron-এ DB নিজেই seed করে), তারপর তালিকা আনা
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (environment === "web") {
-        seedResource("teachers", initTeachers.map(t => ({
-          code:t.id, name:t.name, subject:t.subject, phone:t.phone, salary:t.salary, status:t.status,
-        })));
-      }
-      const rows = await teachersApi.list();
-      if (alive) { setTeachers(rows); setLoading(false); }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  // নতুন আইডি: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন TCH-006)
-  const nextCode = () => {
-    const nums = teachers.map(t => parseInt(String(t.code||"").replace(/\D/g,""),10)).filter(n => !isNaN(n));
-    return "TCH-" + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,"0");
-  };
-
-  const save = async () => {
-    if (!form.name) return alert("নাম আবশ্যক");
-    await teachersApi.create({ ...form, code: nextCode() });
-    setModal(false);
-    setForm({ name:"", subject:"", phone:"", salary:"", status:"সক্রিয়" });
-    await reload();
-  };
-
-  const del = async (id) => { await teachersApi.remove(id); await reload(); };
-
-  return (
-    <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-        <div style={sectionTitle}>শিক্ষক ব্যবস্থাপনা <span style={badge("#9C27B0")}>মোট: {teachers.length}</span></div>
-        <button onClick={() => setModal(true)} style={btn()}>+ নতুন শিক্ষক</button>
-      </div>
-      <div style={card}>
-        <table style={tbl}>
-          <thead><tr><th style={th}>আইডি</th><th style={th}>নাম</th><th style={th}>বিষয়</th><th style={th}>ফোন</th><th style={th}>বেতন</th><th style={th}>অবস্থা</th><th style={th}>কার্যক্রম</th></tr></thead>
-          <tbody>
-            {loading ? (
-              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
-            ) : teachers.length === 0 ? (
-              <tr><td style={td} colSpan={7}>কোনো শিক্ষক পাওয়া যায়নি</td></tr>
-            ) : teachers.map((t) => (
-              <tr key={t.id}>
-                <td style={td}>{t.code}</td><td style={td}>{t.name}</td><td style={td}>{t.subject}</td><td style={td}>{t.phone}</td><td style={td}>{t.salary}</td>
-                <td style={td}><span style={badge(t.status==="সক্রিয়"?"#4CAF50":t.status==="ছুটিতে"?"#FFC107":"#F44336")}>{t.status}</span></td>
-                <td style={td}><button onClick={() => del(t.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {modal && (
-        <Modal title="নতুন শিক্ষক যোগ" onClose={() => setModal(false)}>
-          <FormRow label="পূর্ণ নাম"><input style={inputStyle} value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="শিক্ষকের নাম"/></FormRow>
-          <FormRow label="বিষয়"><input style={inputStyle} value={form.subject} onChange={e => setForm({...form,subject:e.target.value})} placeholder="যেমন: আরবি, গণিত"/></FormRow>
-          <FormRow label="ফোন নম্বর"><input style={inputStyle} value={form.phone} onChange={e => setForm({...form,phone:e.target.value})} placeholder="01XXXXXXXXX"/></FormRow>
-          <FormRow label="মাসিক বেতন"><input style={inputStyle} value={form.salary} onChange={e => setForm({...form,salary:e.target.value})} placeholder="যেমন: ৳১৫,০০০"/></FormRow>
-          <FormRow label="অবস্থা"><select style={inputStyle} value={form.status} onChange={e => setForm({...form,status:e.target.value})}><option>সক্রিয়</option><option>ছুটিতে</option><option>নিষ্ক্রিয়</option></select></FormRow>
-          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
-            <button onClick={() => setModal(false)} style={btn("#9E9E9E")}>বাতিল</button>
-            <button onClick={save} style={btn()}>সংরক্ষণ করুন</button>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -1796,7 +1704,7 @@ function PageContent({ index, onDashboard }) {
     case 2: return <StudentModule/>;
     case 3: return <Academic/>;
     case 4: return <Promotion/>;
-    case 5: return <Teachers/>;
+    case 5: return <TeacherList/>;
     case 6: return <Admin/>;
     case 7: return <Finance/>;
     case 8: return <Receipts/>;
