@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { PageHeader, Card, DataTable, StatCard, StatRow, Badge, Button, useToast, SelectField, TextareaField } from "../../ui";
-import { students as studentsApi, feeReceipts } from "../../data";
+import { students as studentsApi, feeReceipts, receipts as receiptsApi } from "../../data";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const money = (n) => bn((Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 }));
@@ -11,16 +11,12 @@ const YEARS = ["২০২৫", "২০২৬", "২০২৭"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthOpts = (year) => MONTHS.map((m, i) => ({ value: `${year}-${String(i + 1).padStart(2, "0")}`, label: `${m} ${year.replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d))}` }));
 
-const FEE_TEMPLATES = {
-  "আবাসিক": [
-    { fee: "বোর্ডিং চার্জ", fund: "বোর্ডিং", amount: 2700 },
-    { fee: "বেতন ও আবাসন ফি", fund: "বেতন ফান্ড", amount: 1500 },
-  ],
-  "অনাবাসিক": [
-    { fee: "বেতন", fund: "বেতন ফান্ড", amount: 500 },
-  ],
-};
-const templateFor = (type) => (FEE_TEMPLATES[type] || FEE_TEMPLATES["অনাবাসিক"]).map((t) => ({ ...t, checked: true, received: t.amount, discount: 0 }));
+// দুটো ফি সবসময় থাকে — বেতন ও বোর্ডিং; দুটোই চেক করা যায়, সব কলাম এডিটযোগ্য।
+// আবাসিক ছাত্রে বোর্ডিং ডিফল্ট চেক থাকে।
+const templateFor = (type) => [
+  { fee: "বেতন", fund: "বেতন ফান্ড", amount: 500, checked: true, received: 500, discount: 0 },
+  { fee: "বোর্ডিং", fund: "বোর্ডিং", amount: 2700, checked: type === "আবাসিক", received: 2700, discount: 0 },
+];
 
 // ── পেমেন্ট রিসিভ তৈরী (3-step) ──
 function FeeCreate({ students, onBack, onSaved }) {
@@ -71,7 +67,22 @@ function FeeCreate({ students, onBack, onSaved }) {
         month, year, collector: "সুপার অ্যাডমিন", note,
         items: active.map((it) => ({ fee: it.fee, fund: it.fund, amount: nz(it.amount), received: nz(it.received), discount: nz(it.discount), due: dueOf(it) })),
       });
-      toast.success("পেমেন্ট রিসিট সংরক্ষণ হয়েছে");
+      // প্রতিটি ফি আয় হিসেবে রশিদে (হিসাব ও অর্থ বিভাগ) যুক্ত হয়;
+      // "বোর্ডিং" type হওয়ায় বোর্ডিং আয়েও গণ্য হয়।
+      try {
+        const existing = await receiptsApi.list();
+        let n = Math.max(0, ...existing.map((r) => parseInt(String(r.code || "").replace(/\D/g, ""), 10)).filter((x) => !isNaN(x)));
+        const today = new Date().toISOString().slice(0, 10);
+        for (const it of active.filter((x) => nz(x.received) > 0)) {
+          n += 1;
+          await receiptsApi.create({
+            code: "RCP-" + String(n).padStart(3, "0"),
+            student: student.name, class: student.class, roll: student.roll,
+            type: it.fee, amount: nz(it.received), date: today, status: "পরিশোধিত",
+          });
+        }
+      } catch { /* রশিদ যুক্ত না হলেও মূল রিসিট সংরক্ষিত */ }
+      toast.success("পেমেন্ট রিসিট সংরক্ষণ ও হিসাবে যুক্ত হয়েছে");
       onSaved && onSaved(); onBack && onBack();
     } catch (e) { toast.error("সমস্যা: " + (e.message || e)); }
     finally { setSaving(false); }
@@ -131,7 +142,7 @@ function FeeCreate({ students, onBack, onSaved }) {
                     <td style={{ padding: "6px 10px", border: "1px solid #eef" }}>
                       <select value={it.fund} onChange={(e) => setItem(i, { fund: e.target.value })} style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #cfd8cf" }}>{FUNDS.map((f) => <option key={f} value={f}>{f}</option>)}</select>
                     </td>
-                    <td style={{ padding: "6px 10px", border: "1px solid #eef", textAlign: "right" }}>{money(it.amount)}</td>
+                    <td style={{ padding: "6px 6px", border: "1px solid #eef" }}><input value={it.amount} onChange={(e) => setItem(i, { amount: e.target.value.replace(/[^\d.]/g, "") })} style={{ width: 90, padding: "5px 6px", borderRadius: 6, border: "1px solid #cfd8cf", textAlign: "right" }} /></td>
                     <td style={{ padding: "6px 6px", border: "1px solid #eef" }}><input value={it.received} onChange={(e) => setItem(i, { received: e.target.value.replace(/[^\d.]/g, "") })} style={{ width: 80, padding: "5px 6px", borderRadius: 6, border: "1px solid #cfd8cf", textAlign: "right" }} /></td>
                     <td style={{ padding: "6px 6px", border: "1px solid #eef" }}><input value={it.discount} onChange={(e) => setItem(i, { discount: e.target.value.replace(/[^\d.]/g, "") })} style={{ width: 70, padding: "5px 6px", borderRadius: 6, border: "1px solid #cfd8cf", textAlign: "right" }} /></td>
                     <td style={{ padding: "6px 10px", border: "1px solid #eef", textAlign: "right", fontWeight: 700, color: dueOf(it) > 0 ? "#E53935" : "#2E7D32" }}>{money(dueOf(it))}</td>
