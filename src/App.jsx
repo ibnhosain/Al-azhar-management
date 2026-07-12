@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
-  students as studentsApi, receipts as receiptsApi,
+  students as studentsApi,
   expenses as expensesApi, notices as noticesApi,
   sponsors as sponsorsApi, loans as loansApi, orphans as orphansApi,
   academicResults as resultsApi, examRoutine as routineApi, promotions as promotionsApi, staff as staffApi,
@@ -13,6 +13,7 @@ import StudentAdmission from "./modules/student/StudentAdmission";
 import StudentList from "./modules/student/StudentList";
 import StudentFee from "./modules/student/StudentFee";
 import TeacherList from "./modules/teacher/TeacherList";
+import ReceiptList from "./modules/receipt/ReceiptList";
 import BackupRestore from "./modules/settings/BackupRestore";
 import AutoUpdate from "./modules/settings/AutoUpdate";
 
@@ -81,13 +82,6 @@ const initStudents = [
 ];
 
 // ──────────────────────── RECEIPTS DATA ────────────────────────
-const initReceipts = [
-  { id:"RCP-001", student:"মোঃ আরিফ হোসেন", type:"বেতন", amount:"৳৫০০", date:"০১/০৬/২০২৬", status:"পরিশোধিত" },
-  { id:"RCP-002", student:"ফাতেমা বেগম", type:"ভর্তি", amount:"৳৯৫", date:"০২/০৬/২০২৬", status:"পরিশোধিত" },
-  { id:"RCP-003", student:"মোঃ রাফি আহমেদ", type:"বেতন", amount:"৳৭০০", date:"০৩/০৬/২০২৬", status:"বকেয়া" },
-  { id:"RCP-004", student:"মোঃ ইমরান খান", type:"বোর্ডিং", amount:"৳৮০০", date:"০৪/০৬/২০২৬", status:"পরিশোধিত" },
-];
-
 // ──────────────────────── NOTICE DATA ────────────────────────
 const initNotices = [
   { id:1, title:"বার্ষিক পরীক্ষার সময়সূচি", date:"০৫/০৬/২০২৬", priority:"জরুরি", body:"আগামী ১৫ জুন থেকে বার্ষিক পরীক্ষা শুরু হবে।" },
@@ -589,136 +583,6 @@ function printHTML(html) {
   </div>
   </body></html>`);
   w.document.close();
-}
-
-// ──────────────────────── PAGE: RECEIPTS ────────────────────────
-function Receipts() {
-  const [receipts, setReceipts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ student:"", class:"নার্সারি গ্রুপ", roll:"", type:"বেতন", amount:"", date:"", status:"পরিশোধিত" });
-
-  const reload = async () => { setReceipts(await receiptsApi.list()); setLoading(false); };
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (environment === "web") {
-        seedResource("receipts", initReceipts.map(r => ({
-          code:r.id, student:r.student, type:r.type, amount:r.amount, date:r.date, status:r.status,
-        })));
-      }
-      const rows = await receiptsApi.list();
-      if (alive) { setReceipts(rows); setLoading(false); }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  const save = async () => {
-    if (!form.student || !form.amount) return alert("শিক্ষার্থী ও পরিমাণ আবশ্যক");
-    const today = new Date().toLocaleDateString("bn-BD");
-    await receiptsApi.create({ ...form, code: genCode(receipts, "RCP"), date: form.date || today });
-    setModal(false);
-    setForm({ student:"", class:"নার্সারি গ্রুপ", roll:"", type:"বেতন", amount:"", date:"", status:"পরিশোধিত" });
-    await reload();
-  };
-
-  const del = async (id) => { await receiptsApi.remove(id); await reload(); };
-
-  const printReceipt = (r) => {
-    printHTML(`
-      <div style="border:2px solid #2E7D32;border-radius:10px;max-width:420px;margin:auto;padding:0;overflow:hidden">
-        <div style="background:#2E7D32;color:#fff;padding:16px 20px;text-align:center">
-          <div style="font-size:18px;font-weight:700">মাদরাসাতুল আযহার আল-আরাবিয়া</div>
-          <div style="font-size:12px;opacity:0.85;margin-top:4px">সদর, ময়মনসিংহ | +880 1747-658744</div>
-        </div>
-        <div style="background:#E8F5E9;padding:10px 20px;text-align:center;font-size:15px;font-weight:700;color:#1B5E20;letter-spacing:1px">
-          💳 অর্থ প্রদানের রশিদ
-        </div>
-        <div style="padding:20px">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <tr><td style="padding:8px 0;color:#546E7A;width:40%">রশিদ নং</td><td style="padding:8px 0;font-weight:600">: ${r.code || "—"}</td></tr>
-            <tr><td style="padding:8px 0;color:#546E7A">শিক্ষার্থীর নাম</td><td style="padding:8px 0;font-weight:600">: ${r.student}</td></tr>
-            <tr><td style="padding:8px 0;color:#546E7A">শ্রেণি</td><td style="padding:8px 0;font-weight:600">: ${r.class||"—"}</td></tr>
-            <tr><td style="padding:8px 0;color:#546E7A">রোল নম্বর</td><td style="padding:8px 0;font-weight:600">: ${r.roll||"—"}</td></tr>
-            <tr><td style="padding:8px 0;color:#546E7A">ফি-এর ধরন</td><td style="padding:8px 0;font-weight:600">: ${r.type}</td></tr>
-            <tr><td style="padding:8px 0;color:#546E7A">তারিখ</td><td style="padding:8px 0;font-weight:600">: ${r.date}</td></tr>
-            <tr style="border-top:2px dashed #E0E0E0"><td style="padding:12px 0;color:#546E7A;font-size:15px">পরিমাণ</td>
-              <td style="padding:12px 0;font-weight:700;font-size:18px;color:#2E7D32">: ${r.amount}</td>
-            </tr>
-            <tr><td style="padding:8px 0;color:#546E7A">অবস্থা</td>
-              <td style="padding:8px 0"><span style="background:${r.status==='পরিশোধিত'?'#E8F5E9':'#FFEBEE'};color:${r.status==='পরিশোধিত'?'#2E7D32':'#F44336'};padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600">: ${r.status}</span></td>
-            </tr>
-          </table>
-        </div>
-        <div style="border-top:1px dashed #E0E0E0;padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:11px;color:#90A4AE">ধন্যবাদ আপনার পেমেন্টের জন্য</div>
-          <div style="font-size:11px;color:#90A4AE">Easy Coding Space</div>
-        </div>
-      </div>
-    `);
-  };
-
-  return (
-    <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-        <div style={sectionTitle}>রশিদ ব্যবস্থাপনা <span style={badge("#00BCD4")}>মোট: {receipts.length}</span></div>
-        <button onClick={() => setModal(true)} style={btn()}>+ নতুন রশিদ</button>
-      </div>
-      <div style={card}>
-        <table style={tbl}>
-          <thead>
-            <tr>
-              <th style={th}>রশিদ নং</th>
-              <th style={th}>শিক্ষার্থী</th>
-              <th style={th}>ধরন</th>
-              <th style={th}>পরিমাণ</th>
-              <th style={th}>তারিখ</th>
-              <th style={th}>অবস্থা</th>
-              <th style={th}>কার্যক্রম</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td style={td} colSpan={7}>লোড হচ্ছে...</td></tr>
-            ) : receipts.length === 0 ? (
-              <tr><td style={td} colSpan={7}>কোনো রশিদ নেই</td></tr>
-            ) : receipts.map((r) => (
-              <tr key={r.id}>
-                <td style={td}>{r.code}</td>
-                <td style={td}>{r.student}</td>
-                <td style={td}>{r.type}</td>
-                <td style={td}>{r.amount}</td>
-                <td style={td}>{r.date}</td>
-                <td style={td}><span style={badge(r.status==="পরিশোধিত"?"#4CAF50":"#F44336")}>{r.status}</span></td>
-                <td style={td}>
-                  <div style={{ display:"flex", gap:6 }}>
-                    <button onClick={() => printReceipt(r)} style={{ ...btn("#1565C0"), padding:"4px 10px", fontSize:11 }}>🖨️ প্রিন্ট</button>
-                    <button onClick={() => del(r.id)} style={{ ...btn("#F44336"), padding:"4px 10px", fontSize:11 }}>মুছুন</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {modal && (
-        <Modal title="নতুন রশিদ তৈরি" onClose={() => setModal(false)}>
-          <FormRow label="শিক্ষার্থীর নাম"><input style={inputStyle} value={form.student} onChange={e=>setForm({...form,student:e.target.value})} placeholder="শিক্ষার্থীর নাম"/></FormRow>
-          <FormRow label="শ্রেণি"><select style={inputStyle} value={form.class} onChange={e=>setForm({...form,class:e.target.value})}><option>নার্সারি গ্রুপ</option><option>১ম শ্রেণি</option><option>২য় শ্রেণি</option><option>১ম বর্ষ</option><option>নাজেরা বিভাগ</option></select></FormRow>
-          <FormRow label="রোল নম্বর"><input style={inputStyle} value={form.roll} onChange={e=>setForm({...form,roll:e.target.value})} placeholder="রোল নম্বর"/></FormRow>
-          <FormRow label="ফি-এর ধরন"><select style={inputStyle} value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option>বেতন</option><option>ভর্তি</option><option>বোর্ডিং</option><option>পরীক্ষা ফি</option><option>যাকাত</option></select></FormRow>
-          <FormRow label="পরিমাণ"><input style={inputStyle} value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="যেমন: ৳৫০০"/></FormRow>
-          <FormRow label="তারিখ"><input type="date" style={inputStyle} value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></FormRow>
-          <FormRow label="অবস্থা"><select style={inputStyle} value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>পরিশোধিত</option><option>বকেয়া</option></select></FormRow>
-          <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:8 }}>
-            <button onClick={() => setModal(false)} style={btn("#9E9E9E")}>বাতিল</button>
-            <button onClick={save} style={btn()}>সংরক্ষণ করুন</button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
 }
 
 // ──────────────────────── PAGE: NOTICES ────────────────────────
@@ -1696,7 +1560,7 @@ function StudentModule() {
 }
 
 // ──────────────────────── PAGE ROUTER ────────────────────────
-function PageContent({ index, onDashboard }) {
+function PageContent({ index, onNavigate }) {
   switch(index) {
     case -1: return <Dashboard/>;
     case 0: return <Settings/>;
@@ -1707,7 +1571,7 @@ function PageContent({ index, onDashboard }) {
     case 5: return <TeacherList/>;
     case 6: return <Admin/>;
     case 7: return <Finance/>;
-    case 8: return <Receipts/>;
+    case 8: return <ReceiptList onNavigate={onNavigate}/>;
     case 9: return <Sponsors/>;
     case 10: return <Loans/>;
     case 11: return <OrphanSponsors/>;
@@ -1795,7 +1659,7 @@ export default function App() {
 
         {/* Content */}
         <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-          <PageContent index={activeMenu} key={navSeq}/>
+          <PageContent index={activeMenu} onNavigate={goTo} key={navSeq}/>
           {/* Footer */}
           <div style={{ borderTop:"1px solid #E8ECEF", marginTop:8, padding:"16px 0", textAlign:"center" }}>
             <div style={{ fontSize:13, color:"#78909C" }}>© {new Date().getFullYear()} মাদরাসাতুল আযহার আল-আরাবিয়া। সর্বস্বত্ব সংরক্ষিত।</div>
