@@ -24,6 +24,7 @@ const emptyForm = () => ({
   guardian_mobile3: "", guardian_name3: "", guardian_nid: "", id_number: "",
   relation: "", occupation: "", village: "", post_office: "", police_station: "", district: "",
   guardian_address: "", photo: null,
+  monthly_fee: "", boarding_fee: "",
   fee: "", discount: "", received: "",
 });
 
@@ -237,13 +238,26 @@ export default function StudentAdmission({ onBack, onSaved }) {
       {step === 2 && (
         <>
           <Card style={{ marginBottom: 16 }}>
-            <SecHead icon="💵" bn="পেমেন্ট তথ্য" en="Payment Data" />
+            <SecHead icon="📅" bn="মাসিক ফি নির্ধারণ" en="Monthly Fee Setup" />
+            <div style={{ fontSize: 12.5, color: "#78909C", marginBottom: 12, marginTop: -6 }}>
+              এই শিক্ষার্থী প্রতি মাসে কত বেতন{form.student_type === "আবাসিক" ? " ও বোর্ডিং ফি" : ""} দিবে তা এখানে নির্ধারণ করুন। বেতন আদায়ের সময় এই পরিমাণই ব্যবহৃত হবে এবং বকেয়া হিসাব এর ভিত্তিতে হবে।
+            </div>
+            <div style={grid}>
+              <TextField label="মাসিক বেতন / Monthly Tuition" value={form.monthly_fee} onChange={(v) => set("monthly_fee", v.replace(/[^\d.]/g, ""))} />
+              {form.student_type === "আবাসিক" && (
+                <TextField label="মাসিক বোর্ডিং ফি / Monthly Boarding" value={form.boarding_fee} onChange={(v) => set("boarding_fee", v.replace(/[^\d.]/g, ""))} />
+              )}
+            </div>
+          </Card>
+
+          <Card style={{ marginBottom: 16 }}>
+            <SecHead icon="💵" bn="ভর্তি ফি (এককালীন)" en="Admission Fee (one-time)" />
             <div style={grid}>
               <TextField label="ভর্তি ফি / Admission Fee" value={form.fee} onChange={(v) => set("fee", v.replace(/[^\d.]/g, ""))} />
               <TextField label="ছাড় / Discount" value={form.discount} onChange={(v) => set("discount", v.replace(/[^\d.]/g, ""))} />
               <TextField label="গৃহীত / Received" value={form.received} onChange={(v) => set("received", v.replace(/[^\d.]/g, ""))} />
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5a6a72", marginBottom: 5 }}>বকেয়া / Due</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5a6a72", marginBottom: 5 }}>ভর্তি ফি বকেয়া / Due</div>
                 <div style={{ padding: "11px 12px", border: "1px solid #E0E0E0", borderRadius: 8, background: "#f7faf7", fontWeight: 700, color: due > 0 ? "#E53935" : "#2E7D32" }}>৳ {due.toLocaleString("en-US")}</div>
               </div>
             </div>

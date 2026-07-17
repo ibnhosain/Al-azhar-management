@@ -9,7 +9,10 @@ function register() {
   ipcMain.handle("fee_receipt:totals", (_e, filter) => repo.totals(filter || {}));
   ipcMain.handle("fee_receipt:get", (_e, id) => repo.getById(id));
   ipcMain.handle("fee_receipt:dues", (_e, { studentId, beforeMonth }) => repo.duesForStudent(studentId, beforeMonth));
+  ipcMain.handle("fee_receipt:summary", (_e, studentId) => repo.studentSummary(studentId));
+  ipcMain.handle("fee_receipt:duesByStudent", () => repo.duesByStudent());
   ipcMain.handle("fee_receipt:create", (_e, data) => repo.create(data));
+  ipcMain.handle("fee_receipt:collect", (_e, data) => repo.collect(data));
   ipcMain.handle("fee_receipt:delete", (_e, id) => repo.remove(id));
 }
 
