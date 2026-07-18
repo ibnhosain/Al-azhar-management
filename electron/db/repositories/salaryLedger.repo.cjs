@@ -195,4 +195,80 @@ function dashboard() {
   };
 }
 
-module.exports = { add, accrue, collect, reverse, listByTeacher, statement, duesByTeacher, dashboard, getById };
+// ── রিপোর্ট (৭ ধরনের) — সব salary_ledger থেকে derive ──
+function statusOf(earned, paid, deducted) {
+  const due = round(earned - paid - deducted);
+  if (earned <= 0) return "—";
+  if (due <= 0) return "পরিশোধিত";
+  return (paid + deducted) > 0 ? "আংশিক" : "বকেয়া";
+}
+
+// ১. শিক্ষক বেতন রিপোর্ট — প্রতি শিক্ষকের নির্ধারিত/প্রাপ্য/পরিশোধ/বকেয়া
+function salaryReport() {
+  const db = getDb();
+  const list = db.all("SELECT id, code, name, salary, status FROM teachers ORDER BY name");
+  const dues = duesByTeacher();
+  return list.map((t) => {
+    const d = dues[t.id] || { earned: 0, paid: 0, deducted: 0, due: 0 };
+    return { teacher_id: t.id, code: t.code, name: t.name, emp_status: t.status,
+      monthly_salary: round(nz(String(t.salary || "").replace(/[^\d.]/g, ""))),
+      earned: d.earned, paid: d.paid, deducted: d.deducted, due: d.due, status: statusOf(d.earned, d.paid, d.deducted) };
+  });
+}
+
+// ২. মাসিক রিপোর্ট — নির্বাচিত মাসে প্রতি শিক্ষকের হিসাব
+function monthlyReport(month) {
+  const rows = getDb().all(
+    `SELECT teacher_id, teacher_name, teacher_code,
+       SUM(CASE WHEN kind='earning' THEN amount ELSE 0 END)   AS earned,
+       SUM(CASE WHEN kind='payment' THEN amount ELSE 0 END)   AS paid,
+       SUM(CASE WHEN kind='deduction' THEN amount ELSE 0 END) AS deducted
+     FROM salary_ledger WHERE month = ? GROUP BY teacher_id ORDER BY teacher_name`, [month]
+  );
+  return rows.map((r) => ({ teacher_id: r.teacher_id, name: r.teacher_name, code: r.teacher_code,
+    earned: round(r.earned), paid: round(r.paid), deducted: round(r.deducted),
+    due: round(r.earned - r.paid - r.deducted), status: statusOf(r.earned, r.paid, r.deducted) }));
+}
+
+// ৩. বার্ষিক রিপোর্ট — নির্বাচিত বছরের প্রতি মাসের যোগফল
+function yearlyReport(year) {
+  const rows = getDb().all(
+    `SELECT month,
+       SUM(CASE WHEN kind='earning' THEN amount ELSE 0 END)   AS earned,
+       SUM(CASE WHEN kind='payment' THEN amount ELSE 0 END)   AS paid,
+       SUM(CASE WHEN kind='deduction' THEN amount ELSE 0 END) AS deducted
+     FROM salary_ledger WHERE month LIKE ? GROUP BY month ORDER BY month`, [year + "-%"]
+  );
+  return rows.map((r) => ({ month: r.month, earned: round(r.earned), paid: round(r.paid),
+    deducted: round(r.deducted), due: round(r.earned - r.paid - r.deducted) }));
+}
+
+// ৫. পরিশোধ ইতিহাস — filter: from/to/teacherId/method
+function paymentHistory(params = {}) {
+  const where = ["kind = 'payment'"], p = [];
+  if (params.teacherId) { where.push("teacher_id = ?"); p.push(params.teacherId); }
+  if (params.method) { where.push("method = ?"); p.push(params.method); }
+  if (params.from) { where.push("date(txn_date) >= date(?)"); p.push(params.from); }
+  if (params.to) { where.push("date(txn_date) <= date(?)"); p.push(params.to); }
+  return getDb().all(`SELECT * FROM salary_ledger WHERE ${where.join(" AND ")} ORDER BY date(txn_date) DESC, id DESC`, p);
+}
+
+// ৬/৭. category রিপোর্ট (advance / loan)
+function categoryReport(category) {
+  return getDb().all("SELECT * FROM salary_ledger WHERE category = ? ORDER BY date(txn_date) DESC, id DESC", [category]);
+}
+
+function report(type, params = {}) {
+  switch (type) {
+    case "salary": return salaryReport();
+    case "monthly": return monthlyReport(params.month);
+    case "yearly": return yearlyReport(params.year);
+    case "outstanding": return salaryReport().filter((r) => r.due > 0);
+    case "payments": return paymentHistory(params);
+    case "advance": return categoryReport("advance");
+    case "loan": return categoryReport("loan");
+    default: return [];
+  }
+}
+
+module.exports = { add, accrue, collect, reverse, listByTeacher, statement, duesByTeacher, dashboard, report, getById };

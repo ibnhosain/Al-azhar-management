@@ -11,4 +11,5 @@ export const salaryLedger = {
   add: (data) => call("salary_ledger:add", data),
   collect: (data) => call("salary_ledger:collect", data),
   reverse: (id, meta) => call("salary_ledger:reverse", { id, meta }),
+  report: (type, params) => call("salary_ledger:report", { type, params }),
 };

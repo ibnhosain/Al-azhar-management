@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { PageHeader, Card, DataTable, StatCard, StatRow, Badge, Button, Modal, useToast, TextField, SelectField, ComboField, DateField, TextareaField } from "../../ui";
 import { salaryLedger } from "../../data";
+import TeacherReports from "./TeacherReports";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const nz = (v) => { const e = String(v ?? "").replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)); const n = parseFloat(e.replace(/[^\d.]/g, "")); return isNaN(n) ? 0 : n; };
@@ -9,6 +10,12 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const CAT_LABEL = { salary: "বেতন", allowance: "ভাতা", bonus: "বোনাস", payment: "পরিশোধ", advance: "অগ্রিম", loan: "ঋণ", deduction: "কর্তন", adjustment: "সমন্বয়" };
 const METHODS = ["নগদ", "ব্যাংক", "মোবাইল ব্যাংকিং", "চেক"];
+const TXN_TYPES = [
+  { value: "payment", label: "বেতন পরিশোধ" },
+  { value: "advance", label: "অগ্রিম বেতন" },
+  { value: "loan", label: "ঋণ প্রদান" },
+  { value: "deduction", label: "কর্তন / জরিমানা" },
+];
 const STATUS_COLOR = { "পরিশোধিত": "#2E7D32", "আংশিক": "#EF6C00", "বকেয়া": "#E53935", "—": "#90A4AE" };
 
 // শেষ ১২ মাস (YYYY-MM) — বাংলা লেবেলসহ
@@ -69,12 +76,13 @@ function printSalaryReceipt(d) {
 }
 
 // ── পে-রোল ড্যাশবোর্ড ──
-function PayrollDashboard({ onOpenTeacher, onBack }) {
+function PayrollDashboard({ onOpenTeacher, onOpenReports, onBack }) {
   const [d, setD] = useState(null);
   useEffect(() => { salaryLedger.dashboard().then(setD).catch(() => setD(null)); }, []);
   return (
     <div>
-      <PageHeader icon="💰" title="পে-রোল ড্যাশবোর্ড" description="সকল শিক্ষকের বেতন, পরিশোধ ও বকেয়ার সারসংক্ষেপ" onBack={onBack} />
+      <PageHeader icon="💰" title="পে-রোল ড্যাশবোর্ড" description="সকল শিক্ষকের বেতন, পরিশোধ ও বকেয়ার সারসংক্ষেপ" onBack={onBack}
+        actions={<Button variant="secondary" onClick={onOpenReports} icon="📊">রিপোর্ট</Button>} />
       <StatRow>
         <StatCard icon="👥" label="মোট শিক্ষক" value={bn(d ? d.teacherCount : 0)} color="#8E24AA" />
         <StatCard icon="💵" label="মোট মাসিক বেতন" value={money(d ? d.totalMonthlySalary : 0)} color="#00838F" />
@@ -119,7 +127,7 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack, embedd
   const [stmt, setStmt] = useState(null);
   const [modal, setModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const emptyPay = () => ({ month: recentMonths(1)[0].value, salary: current ? String(nz(current.salary)) : "", allowance: "", bonus: "", deduction: "", pay_amount: "", method: "নগদ", reference: "", notes: "", collected_by: "সুপার অ্যাডমিন", txn_date: todayISO() });
+  const emptyPay = () => ({ txn_type: "payment", month: recentMonths(1)[0].value, salary: current ? String(nz(current.salary)) : "", allowance: "", bonus: "", deduction: "", pay_amount: "", method: "নগদ", reference: "", notes: "", collected_by: "সুপার অ্যাডমিন", txn_date: todayISO() });
   const [pay, setPay] = useState(emptyPay());
   const setP = (k, v) => setPay((f) => ({ ...f, [k]: v }));
 
@@ -132,15 +140,20 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack, embedd
 
   const openPay = () => { setPay(emptyPay()); setModal(true); };
 
+  const isPayment = pay.txn_type === "payment";
   const doSave = async (doPrint) => {
-    if (!nz(pay.salary)) return toast.error("এই মাসের নির্ধারিত বেতন দিন");
-    if (nz(pay.pay_amount) <= 0 && !nz(pay.allowance) && !nz(pay.bonus) && !nz(pay.deduction)) return toast.error("পরিশোধ বা ভাতা/বোনাস/কর্তন — অন্তত একটি দিন");
+    if (isPayment && !nz(pay.salary)) return toast.error("এই মাসের নির্ধারিত বেতন দিন");
+    if (isPayment && nz(pay.pay_amount) <= 0 && !nz(pay.allowance) && !nz(pay.bonus) && !nz(pay.deduction)) return toast.error("পরিশোধ বা ভাতা/বোনাস/কর্তন — অন্তত একটি দিন");
+    if (!isPayment && nz(pay.pay_amount) <= 0) return toast.error("পরিমাণ দিন");
     setSaving(true);
     try {
+      // payment: মাসের বেতন accrue + পরিশোধ। advance/loan/deduction: শুধু ঐ লেনদেন (accrual নয়)।
       const res = await salaryLedger.collect({
         teacher_id: current.id, teacher_code: current.code, teacher_name: current.name,
-        month: pay.month, salary: nz(pay.salary), allowance: nz(pay.allowance), bonus: nz(pay.bonus), deduction: nz(pay.deduction),
-        pay_amount: nz(pay.pay_amount), method: pay.method, reference: pay.reference, notes: pay.notes,
+        month: pay.month,
+        salary: isPayment ? nz(pay.salary) : 0, allowance: isPayment ? nz(pay.allowance) : 0, bonus: isPayment ? nz(pay.bonus) : 0, deduction: isPayment ? nz(pay.deduction) : 0,
+        pay_amount: nz(pay.pay_amount), pay_category: pay.txn_type,
+        method: pay.method, reference: pay.reference, notes: pay.notes,
         collected_by: pay.collected_by, txn_date: pay.txn_date,
       });
       const fresh = res.statement;
@@ -166,7 +179,8 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack, embedd
     catch (e) { toast.error("সমস্যা: " + (e.message || e)); }
   };
 
-  if (view === "dashboard") return <PayrollDashboard onOpenTeacher={openTeacher} onBack={onBack} />;
+  if (view === "reports") return <TeacherReports onBack={() => setView("dashboard")} />;
+  if (view === "dashboard") return <PayrollDashboard onOpenTeacher={openTeacher} onOpenReports={() => setView("reports")} onBack={onBack} />;
   if (!current) return null;
 
   const paidPct = stmt && stmt.totalEarned > 0 ? Math.min(100, Math.round((stmt.totalPaid / stmt.totalEarned) * 100)) : 0;
@@ -245,23 +259,30 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack, embedd
         <Modal title={`বেতন পরিশোধ — ${current.name}`} icon="💰" width={640} onClose={() => setModal(false)}
           footer={<><Button variant="secondary" onClick={() => setModal(false)}>বাতিল</Button><Button variant="secondary" onClick={() => doSave(false)} loading={saving} icon="💾">সংরক্ষণ</Button><Button onClick={() => doSave(true)} loading={saving} icon="🖨️">সংরক্ষণ ও রশিদ</Button></>}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>
+            <SelectField label="লেনদেনের ধরন" value={pay.txn_type} onChange={(v) => setP("txn_type", v)} options={TXN_TYPES} />
             <ComboField label="মাস (বেছে নিন / পুরনো মাস)" value={pay.month} onChange={(v) => setP("month", v)} options={recentMonths(15)} />
-            <DateField label="পরিশোধের তারিখ" value={pay.txn_date} onChange={(v) => setP("txn_date", v)} />
-            <TextField label="এই মাসের নির্ধারিত বেতন *" value={pay.salary} onChange={(v) => setP("salary", v.replace(/[^\d.]/g, ""))} />
-            <TextField label="পরিশোধের পরিমাণ" value={pay.pay_amount} onChange={(v) => setP("pay_amount", v.replace(/[^\d.]/g, ""))} />
-            <TextField label="ভাতা (ঐচ্ছিক)" value={pay.allowance} onChange={(v) => setP("allowance", v.replace(/[^\d.]/g, ""))} />
-            <TextField label="বোনাস (ঐচ্ছিক)" value={pay.bonus} onChange={(v) => setP("bonus", v.replace(/[^\d.]/g, ""))} />
-            <TextField label="কর্তন (ঐচ্ছিক)" value={pay.deduction} onChange={(v) => setP("deduction", v.replace(/[^\d.]/g, ""))} />
+            <DateField label="তারিখ" value={pay.txn_date} onChange={(v) => setP("txn_date", v)} />
+            <TextField label={isPayment ? "পরিশোধের পরিমাণ" : "পরিমাণ *"} value={pay.pay_amount} onChange={(v) => setP("pay_amount", v.replace(/[^\d.]/g, ""))} />
+            {isPayment && <TextField label="এই মাসের নির্ধারিত বেতন *" value={pay.salary} onChange={(v) => setP("salary", v.replace(/[^\d.]/g, ""))} />}
+            {isPayment && <TextField label="ভাতা (ঐচ্ছিক)" value={pay.allowance} onChange={(v) => setP("allowance", v.replace(/[^\d.]/g, ""))} />}
+            {isPayment && <TextField label="বোনাস (ঐচ্ছিক)" value={pay.bonus} onChange={(v) => setP("bonus", v.replace(/[^\d.]/g, ""))} />}
+            {isPayment && <TextField label="কর্তন (ঐচ্ছিক)" value={pay.deduction} onChange={(v) => setP("deduction", v.replace(/[^\d.]/g, ""))} />}
             <SelectField label="মাধ্যম" value={pay.method} onChange={(v) => setP("method", v)} options={METHODS} />
             <TextField label="রেফারেন্স (চেক/ট্রানজেকশন নং)" value={pay.reference} onChange={(v) => setP("reference", v)} />
             <TextField label="প্রদানকারী" value={pay.collected_by} onChange={(v) => setP("collected_by", v)} />
           </div>
           <TextareaField label="নোট" value={pay.notes} onChange={(v) => setP("notes", v)} rows={2} />
-          <div style={{ marginTop: 6, background: monthRec && monthRec.due > 0 ? "#FFF3E0" : "#E8F5E9", border: `1px solid ${monthRec && monthRec.due > 0 ? "#FFCC80" : "#A5D6A7"}`, borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>
-            {monthRec
-              ? <><b>{monthLabel(pay.month)}</b> — প্রাপ্য {money(monthRec.earned)} · পরিশোধিত <b style={{ color: "#2E7D32" }}>{money(monthRec.paid)}</b> · {monthRec.due > 0 ? <>বাকি <b style={{ color: "#E53935" }}>{money(monthRec.due)}</b></> : <b style={{ color: "#2E7D32" }}>সম্পূর্ণ পরিশোধিত ✓</b>}</>
-              : <span style={{ color: "#546E7A" }}>💡 এই মাসে এখনো এন্ট্রি নেই — সংরক্ষণে নির্ধারিত বেতন accrue হয়ে পরিশোধ যোগ হবে (আগের কোনো লেনদেন মুছবে না)।</span>}
-          </div>
+          {isPayment ? (
+            <div style={{ marginTop: 6, background: monthRec && monthRec.due > 0 ? "#FFF3E0" : "#E8F5E9", border: `1px solid ${monthRec && monthRec.due > 0 ? "#FFCC80" : "#A5D6A7"}`, borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>
+              {monthRec
+                ? <><b>{monthLabel(pay.month)}</b> — প্রাপ্য {money(monthRec.earned)} · পরিশোধিত <b style={{ color: "#2E7D32" }}>{money(monthRec.paid)}</b> · {monthRec.due > 0 ? <>বাকি <b style={{ color: "#E53935" }}>{money(monthRec.due)}</b></> : <b style={{ color: "#2E7D32" }}>সম্পূর্ণ পরিশোধিত ✓</b>}</>
+                : <span style={{ color: "#546E7A" }}>💡 এই মাসে এখনো এন্ট্রি নেই — সংরক্ষণে নির্ধারিত বেতন accrue হয়ে পরিশোধ যোগ হবে (আগের কোনো লেনদেন মুছবে না)।</span>}
+            </div>
+          ) : (
+            <div style={{ marginTop: 6, background: "#EDE7F6", border: "1px solid #B39DDB", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#4527A0" }}>
+              💡 এটি একটি স্বতন্ত্র লেনদেন (মাসিক বেতন accrue হবে না) — লেজারে স্থায়ীভাবে সংরক্ষিত হবে এবং সংশ্লিষ্ট রিপোর্টে দেখাবে।
+            </div>
+          )}
         </Modal>
       )}
     </div>
