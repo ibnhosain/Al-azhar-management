@@ -2,12 +2,16 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { PageHeader, DataTable, StatCard, StatRow, Badge, Button, Modal, useToast, TextField, SelectField, ComboField, DateField, TextareaField } from "../../ui";
 import { teachers as teachersApi, salaryLedger } from "../../data";
 import TeacherPayroll from "./TeacherPayroll";
+import TeacherProfile from "./TeacherProfile";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const num = (v) => { const e = String(v ?? "").replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)); const n = parseFloat(e.replace(/[^\d.]/g, "")); return isNaN(n) ? 0 : n; };
 const money = (n) => "৳" + bn((Math.round(n) || 0).toLocaleString("en-US"));
 
 const DESIGNATIONS = ["প্রধান শিক্ষক", "সহকারী শিক্ষক", "মৌলভী", "হাফেজ", "ক্বারী", "মুহাদ্দিস", "শিক্ষিকা", "অন্যান্য"];
+const DEPARTMENTS = ["হিফয বিভাগ", "নাজেরা বিভাগ", "কিতাব বিভাগ", "নূরানী বিভাগ", "মক্তব বিভাগ", "প্রশাসন", "অন্যান্য"];
+const EMPLOYMENT_TYPES = ["স্থায়ী", "চুক্তিভিত্তিক", "খণ্ডকালীন", "শিক্ষানবিশ"];
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
 const STATUSES = ["সক্রিয়", "ছুটিতে", "নিষ্ক্রিয়"];
 const STATUS_COLOR = { "সক্রিয়": "#2E7D32", "ছুটিতে": "#EF6C00", "নিষ্ক্রিয়": "#E53935" };
 
@@ -25,7 +29,13 @@ function Avatar({ src, name, size = 40 }) {
     : <div style={{ width: size, height: size, borderRadius: "50%", background: "#F3E5F5", color: "#8E24AA", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.42 }}>{(name || "?").trim().slice(0, 1)}</div>;
 }
 
-const emptyForm = () => ({ name: "", designation: "সহকারী শিক্ষক", subject: "", qualification: "", phone: "", email: "", salary: "", join_date: "", address: "", status: "সক্রিয়", photo: null });
+const emptyForm = () => ({
+  name: "", designation: "সহকারী শিক্ষক", department: "", subject: "", qualification: "", skills: "",
+  phone: "", whatsapp: "", email: "", nid: "", dob: "", blood_group: "", emergency_contact: "",
+  salary: "", join_date: "", employment_type: "স্থায়ী", address: "", status: "সক্রিয়", photo: null,
+});
+const FIELDS = Object.keys(emptyForm());
+const pickForm = (r) => { const f = { ...emptyForm() }; for (const k of FIELDS) if (r[k] != null) f[k] = r[k]; f.code = r.code || ""; return f; };
 
 export default function TeacherList() {
   const toast = useToast();
@@ -38,7 +48,7 @@ export default function TeacherList() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
-  const [detail, setDetail] = useState(null);
+  const [profile, setProfile] = useState(null);     // খোলা শিক্ষকের প্রোফাইল (৪-ট্যাব পেজ)
   const [payroll, setPayroll] = useState(null);     // null | {teacher} | {dashboard:true}
   const [dueMap, setDueMap] = useState({});          // { [teacher_id]: {due} } — বেতন লেজার থেকে
   const fileRef = useRef(null);
@@ -73,7 +83,7 @@ export default function TeacherList() {
   const nextCode = () => { const n = rows.map((r) => parseInt(String(r.code || "").replace(/\D/g, ""), 10)).filter((x) => !isNaN(x)); return "TCH-" + String((n.length ? Math.max(...n) : 0) + 1).padStart(3, "0"); };
 
   const openCreate = () => { setEditing(null); setForm({ ...emptyForm(), code: nextCode() }); setModal(true); };
-  const openEdit = (r) => { setEditing(r.id); setForm({ code: r.code || "", name: r.name || "", designation: r.designation || "সহকারী শিক্ষক", subject: r.subject || "", qualification: r.qualification || "", phone: r.phone || "", email: r.email || "", salary: r.salary || "", join_date: r.join_date || "", address: r.address || "", status: r.status || "সক্রিয়", photo: r.photo || null }); setModal(true); };
+  const openEdit = (r) => { setEditing(r.id); setForm(pickForm(r)); setModal(true); };
 
   const onFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; try { set("photo", await resizeImg(f)); } catch { toast.error("ছবি লোড হয়নি"); } };
 
@@ -81,9 +91,12 @@ export default function TeacherList() {
     if (!form.name.trim()) return toast.error("নাম দিন");
     setSaving(true);
     try {
-      if (editing) { await teachersApi.update(editing, form); toast.success("আপডেট হয়েছে"); }
-      else { await teachersApi.create({ ...form, code: form.code || nextCode() }); toast.success("শিক্ষক যোগ হয়েছে"); }
-      setModal(false); await reload();
+      let savedRow;
+      if (editing) { savedRow = await teachersApi.update(editing, form); toast.success("আপডেট হয়েছে"); }
+      else { savedRow = await teachersApi.create({ ...form, code: form.code || nextCode() }); toast.success("শিক্ষক যোগ হয়েছে"); }
+      setModal(false);
+      if (profile && savedRow && savedRow.id === profile.id) setProfile(savedRow); // খোলা প্রোফাইল রিফ্রেশ
+      await reload();
     } catch (e) { toast.error("সমস্যা: " + (e.message || e)); }
     finally { setSaving(false); }
   };
@@ -103,12 +116,63 @@ export default function TeacherList() {
     { key: "__a", label: "কার্যক্রম", render: (r) => (
       <div style={{ display: "flex", gap: 5 }}>
         <Button size="sm" variant="subtle" onClick={() => setPayroll({ teacher: r })} title="বেতন লেজার">💰</Button>
-        <Button size="sm" variant="subtle" onClick={() => setDetail(r)}>👁</Button>
+        <Button size="sm" variant="subtle" onClick={() => setProfile(r)} title="প্রোফাইল (৪ ট্যাব)">👁</Button>
         <Button size="sm" variant="subtle" onClick={() => openEdit(r)}>✏</Button>
         <Button size="sm" variant="dangerSoft" onClick={() => del(r)}>🗑</Button>
       </div>
     ) },
   ];
+
+  const renderModal = () => (
+    <Modal title={editing ? "শিক্ষক সম্পাদনা" : "নতুন শিক্ষক"} icon="👨‍🏫" width={640} onClose={() => setModal(false)}
+      footer={<><Button variant="secondary" onClick={() => setModal(false)}>বাতিল</Button><Button onClick={save} loading={saving}>💾 সংরক্ষণ</Button></>}>
+      <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
+        <Avatar src={form.photo} name={form.name} size={74} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ cursor: "pointer" }}><span style={{ padding: "7px 14px", borderRadius: 8, background: "#F3E5F5", color: "#8E24AA", fontWeight: 600, fontSize: 13, display: "inline-block" }}>📷 ছবি নির্বাচন</span><input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} /></label>
+          {form.photo && <button type="button" onClick={() => set("photo", "")} style={{ background: "none", border: "none", color: "#E53935", cursor: "pointer", fontSize: 12, textAlign: "left" }}>✕ ছবি সরান</button>}
+        </div>
+      </div>
+      <div style={{ fontWeight: 700, color: "#8E24AA", fontSize: 13, margin: "4px 0 8px" }}>👤 ব্যক্তিগত তথ্য</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>
+        <TextField label="আইডি (স্বয়ংক্রিয়)" value={form.code || ""} onChange={(v) => set("code", v)} />
+        <TextField label="পূর্ণ নাম *" value={form.name} onChange={(v) => set("name", v)} />
+        <DateField label="জন্ম তারিখ" value={form.dob} onChange={(v) => set("dob", v)} />
+        <SelectField label="রক্তের গ্রুপ" value={form.blood_group} onChange={(v) => set("blood_group", v)} options={[{ value: "", label: "— বাছুন —" }, ...BLOOD_GROUPS]} />
+        <TextField label="জাতীয় পরিচয়পত্র (NID)" value={form.nid} onChange={(v) => set("nid", v)} />
+      </div>
+
+      <div style={{ fontWeight: 700, color: "#00838F", fontSize: 13, margin: "12px 0 8px" }}>📞 যোগাযোগ</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>
+        <TextField label="মোবাইল নম্বর" value={form.phone} onChange={(v) => set("phone", v)} />
+        <TextField label="হোয়াটসঅ্যাপ নম্বর" value={form.whatsapp} onChange={(v) => set("whatsapp", v)} />
+        <TextField label="ইমেইল" value={form.email} onChange={(v) => set("email", v)} />
+        <TextField label="জরুরি যোগাযোগ" value={form.emergency_contact} onChange={(v) => set("emergency_contact", v)} />
+      </div>
+      <TextareaField label="ঠিকানা" value={form.address} onChange={(v) => set("address", v)} rows={2} />
+
+      <div style={{ fontWeight: 700, color: "#2E7D32", fontSize: 13, margin: "12px 0 8px" }}>💼 কর্মসংস্থান ও একাডেমিক</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>
+        <ComboField label="পদবি (বাছুন বা নিজে লিখুন)" value={form.designation} onChange={(v) => set("designation", v)} options={DESIGNATIONS} />
+        <ComboField label="বিভাগ (Department)" value={form.department} onChange={(v) => set("department", v)} options={DEPARTMENTS} />
+        <SelectField label="নিয়োগের ধরন" value={form.employment_type} onChange={(v) => set("employment_type", v)} options={EMPLOYMENT_TYPES} />
+        <DateField label="যোগদানের তারিখ" value={form.join_date} onChange={(v) => set("join_date", v)} />
+        <TextField label="বিষয়" value={form.subject} onChange={(v) => set("subject", v)} />
+        <TextField label="শিক্ষাগত যোগ্যতা" value={form.qualification} onChange={(v) => set("qualification", v)} />
+        <TextField label="দক্ষতা / Skills" value={form.skills} onChange={(v) => set("skills", v)} />
+        <TextField label="মাসিক বেতন" value={form.salary} onChange={(v) => set("salary", v)} />
+        <SelectField label="অবস্থা" value={form.status} onChange={(v) => set("status", v)} options={STATUSES} />
+      </div>
+    </Modal>
+  );
+
+  // প্রোফাইল ৪-ট্যাব পেজ — এডিট মডাল প্রোফাইলের উপরেই খোলে
+  if (profile) return (
+    <>
+      <TeacherProfile teacher={profile} onBack={() => { setProfile(null); reload(); }} onEdit={openEdit} />
+      {modal && renderModal()}
+    </>
+  );
 
   // পে-রোল ভিউ (বেতন লেজার / ড্যাশবোর্ড) — বিদ্যমান তালিকা অক্ষুণ্ণ রেখে
   if (payroll) return <TeacherPayroll teacher={payroll.teacher} startDashboard={payroll.dashboard} onBack={() => { setPayroll(null); reload(); }} />;
@@ -139,49 +203,7 @@ export default function TeacherList() {
       <DataTable columns={columns} rows={filtered} loading={loading} exportName="teachers"
         empty={{ icon: "👨‍🏫", title: "কোনো শিক্ষক নেই", description: "‘নতুন শিক্ষক’ দিয়ে যোগ করুন" }} />
 
-      {modal && (
-        <Modal title={editing ? "শিক্ষক সম্পাদনা" : "নতুন শিক্ষক"} icon="👨‍🏫" width={640} onClose={() => setModal(false)}
-          footer={<><Button variant="secondary" onClick={() => setModal(false)}>বাতিল</Button><Button onClick={save} loading={saving}>💾 সংরক্ষণ</Button></>}>
-          <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
-            <Avatar src={form.photo} name={form.name} size={74} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ cursor: "pointer" }}><span style={{ padding: "7px 14px", borderRadius: 8, background: "#F3E5F5", color: "#8E24AA", fontWeight: 600, fontSize: 13, display: "inline-block" }}>📷 ছবি নির্বাচন</span><input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} /></label>
-              {form.photo && <button type="button" onClick={() => set("photo", "")} style={{ background: "none", border: "none", color: "#E53935", cursor: "pointer", fontSize: 12, textAlign: "left" }}>✕ ছবি সরান</button>}
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>
-            <TextField label="আইডি" value={form.code || ""} onChange={(v) => set("code", v)} />
-            <TextField label="পূর্ণ নাম *" value={form.name} onChange={(v) => set("name", v)} />
-            <ComboField label="পদবি (বাছুন বা নিজে লিখুন)" value={form.designation} onChange={(v) => set("designation", v)} options={DESIGNATIONS} />
-            <TextField label="বিষয়" value={form.subject} onChange={(v) => set("subject", v)} />
-            <TextField label="শিক্ষাগত যোগ্যতা" value={form.qualification} onChange={(v) => set("qualification", v)} />
-            <TextField label="ফোন নম্বর" value={form.phone} onChange={(v) => set("phone", v)} />
-            <TextField label="ইমেইল" value={form.email} onChange={(v) => set("email", v)} />
-            <TextField label="মাসিক বেতন" value={form.salary} onChange={(v) => set("salary", v)} />
-            <DateField label="যোগদানের তারিখ" value={form.join_date} onChange={(v) => set("join_date", v)} />
-            <SelectField label="অবস্থা" value={form.status} onChange={(v) => set("status", v)} options={STATUSES} />
-          </div>
-          <TextareaField label="ঠিকানা" value={form.address} onChange={(v) => set("address", v)} rows={2} />
-        </Modal>
-      )}
-
-      {detail && (
-        <Modal title={detail.name} icon="👨‍🏫" width={560} onClose={() => setDetail(null)} footer={<Button variant="secondary" onClick={() => setDetail(null)}>বন্ধ</Button>}>
-          <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14 }}>
-            <Avatar src={detail.photo} name={detail.name} size={64} />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: "#243B40" }}>{detail.name}</div>
-              <div style={{ fontSize: 13, color: "#607D8B" }}>{detail.designation || "—"} · {detail.subject || "—"}</div>
-              <Badge color={STATUS_COLOR[detail.status] || "#607D8B"}>{detail.status}</Badge>
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", fontSize: 13 }}>
-            {[["আইডি", detail.code], ["ফোন", bn(detail.phone || "—")], ["ইমেইল", detail.email], ["যোগ্যতা", detail.qualification], ["বেতন", detail.salary ? money(num(detail.salary)) : "—"], ["যোগদান", detail.join_date], ["ঠিকানা", detail.address]].map(([k, v]) => (
-              <div key={k} style={{ display: "flex", gap: 6 }}><span style={{ color: "#90A4AE", minWidth: 70 }}>{k}:</span><span style={{ color: "#37474F", fontWeight: 600 }}>{v || "—"}</span></div>
-            ))}
-          </div>
-        </Modal>
-      )}
+      {modal && renderModal()}
     </div>
   );
 }

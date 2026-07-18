@@ -112,7 +112,7 @@ function PayrollDashboard({ onOpenTeacher, onBack }) {
 }
 
 // ── এক শিক্ষকের বেতন স্টেটমেন্ট (ব্যাংক-স্টেটমেন্ট স্টাইল) ──
-export default function TeacherPayroll({ teacher, startDashboard, onBack }) {
+export default function TeacherPayroll({ teacher, startDashboard, onBack, embedded }) {
   const toast = useToast();
   const [view, setView] = useState(startDashboard ? "dashboard" : "statement");
   const [current, setCurrent] = useState(teacher || null);
@@ -183,9 +183,16 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack }) {
 
   return (
     <div>
-      <PageHeader icon="👨‍🏫" title={`বেতন লেজার — ${current.name}`} description={`আইডি ${current.code || "—"} · মাসিক বেতন ${money(nz(current.salary))} · ব্যাংক-স্টেটমেন্ট নীতি (স্থায়ী লেনদেন)`}
-        onBack={onBack}
-        actions={<><Button variant="secondary" onClick={() => setView("dashboard")} icon="📊">ড্যাশবোর্ড</Button><Button onClick={openPay} icon="＋">বেতন পরিশোধ</Button></>} />
+      {embedded ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, color: "#1b4d3e", fontSize: 15 }}>🏦 বেতন লেজার <span style={{ fontSize: 12, color: "#90A4AE", fontWeight: 400 }}>· ব্যাংক-স্টেটমেন্ট নীতি</span></div>
+          <Button onClick={openPay} icon="＋">বেতন পরিশোধ</Button>
+        </div>
+      ) : (
+        <PageHeader icon="👨‍🏫" title={`বেতন লেজার — ${current.name}`} description={`আইডি ${current.code || "—"} · মাসিক বেতন ${money(nz(current.salary))} · ব্যাংক-স্টেটমেন্ট নীতি (স্থায়ী লেনদেন)`}
+          onBack={onBack}
+          actions={<><Button variant="secondary" onClick={() => setView("dashboard")} icon="📊">ড্যাশবোর্ড</Button><Button onClick={openPay} icon="＋">বেতন পরিশোধ</Button></>} />
+      )}
 
       <StatRow>
         <StatCard icon="📈" label="মোট প্রাপ্য (accrued)" value={money(stmt ? stmt.totalEarned : 0)} color="#00838F" />
