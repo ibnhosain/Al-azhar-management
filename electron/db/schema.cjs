@@ -478,6 +478,25 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_tacademic_teacher ON teacher_academic_log(teacher_id, log_type);
     `);
   },
+
+  // ── v15: শিক্ষক ডকুমেন্ট — নিয়োগপত্র/NID/CV/সার্টিফিকেট/চুক্তিপত্র ইত্যাদি ফাইল।
+  //  ফাইল <dbDir>/documents/-এ; এই টেবিলে শুধু metadata + সংরক্ষিত ফাইলনাম।
+  function v15(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS teacher_documents (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id    INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        doc_type      TEXT,                    -- appointment/nid/cv/certificate/experience/contract/other
+        title         TEXT,
+        original_name TEXT,
+        stored_name   TEXT,
+        mime          TEXT,
+        size          INTEGER DEFAULT 0,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_tdocs_teacher ON teacher_documents(teacher_id);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

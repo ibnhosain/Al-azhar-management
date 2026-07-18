@@ -37,6 +37,11 @@ function getPhotosDir(dbDir) {
   return path.join(dbDir, "photos");
 }
 
+// শিক্ষক ডকুমেন্ট ফোল্ডার (নিয়োগপত্র/NID/CV ইত্যাদি; DB-র পাশে → ব্যাকআপে অন্তর্ভুক্ত)।
+function getDocsDir(dbDir) {
+  return path.join(dbDir, "documents");
+}
+
 module.exports = {
   DEFAULT_DB_DIR,
   DB_FILENAME,
@@ -46,4 +51,5 @@ module.exports = {
   getDbFilePath,
   getBackupDir,
   getPhotosDir,
+  getDocsDir,
 };

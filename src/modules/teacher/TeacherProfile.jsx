@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageHeader, Card, Badge, Button } from "../../ui";
 import TeacherPayroll from "./TeacherPayroll";
 import TeacherAcademic from "./TeacherAcademic";
+import TeacherDocuments from "./TeacherDocuments";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const money = (v) => { const n = parseFloat(String(v ?? "").replace(/[^\d.]/g, "")) || 0; return "৳" + bn(n.toLocaleString("en-US")); };
@@ -34,16 +35,6 @@ function Section({ title, color, children }) {
     <Card style={{ padding: 16, marginBottom: 14 }}>
       <div style={{ fontWeight: 700, color, marginBottom: 8, fontSize: 14 }}>{title}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>{children}</div>
-    </Card>
-  );
-}
-
-function Placeholder({ icon, title, note }) {
-  return (
-    <Card style={{ padding: "40px 20px", textAlign: "center" }}>
-      <div style={{ fontSize: 40, marginBottom: 10 }}>{icon}</div>
-      <div style={{ fontWeight: 700, color: "#37474F", fontSize: 16 }}>{title}</div>
-      <div style={{ color: "#90A4AE", marginTop: 6, fontSize: 13 }}>{note}</div>
     </Card>
   );
 }
@@ -117,10 +108,7 @@ export default function TeacherProfile({ teacher, onBack, onEdit }) {
 
       {tab === "payroll" && <TeacherPayroll teacher={t} embedded />}
 
-      {tab === "documents" && (
-        <Placeholder icon="📁" title="ডকুমেন্ট সংরক্ষণ"
-          note="নিয়োগপত্র, NID, CV, সার্টিফিকেট, অভিজ্ঞতা সনদ, চুক্তিপত্র ও অন্যান্য ফাইল — পরবর্তী সেশনে (সেশন ৪) যুক্ত হবে।" />
-      )}
+      {tab === "documents" && <TeacherDocuments teacher={t} />}
     </div>
   );
 }
