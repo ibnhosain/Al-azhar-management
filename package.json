@@ -1,7 +1,7 @@
 {
   "name": "madrasa-dashboard",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Madrasa Management — offline desktop ERP (মাদরাসা ব্যবস্থাপনা)",
   "author": "Easy Coding Space",
   "type": "module",
