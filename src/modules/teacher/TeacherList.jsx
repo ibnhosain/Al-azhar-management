@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { PageHeader, DataTable, StatCard, StatRow, Badge, Button, Modal, useToast, TextField, SelectField, ComboField, DateField, TextareaField } from "../../ui";
-import { teachers as teachersApi } from "../../data";
+import { teachers as teachersApi, salaryLedger } from "../../data";
+import TeacherPayroll from "./TeacherPayroll";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const num = (v) => { const e = String(v ?? "").replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)); const n = parseFloat(e.replace(/[^\d.]/g, "")); return isNaN(n) ? 0 : n; };
@@ -38,11 +39,19 @@ export default function TeacherList() {
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [payroll, setPayroll] = useState(null);     // null | {teacher} | {dashboard:true}
+  const [dueMap, setDueMap] = useState({});          // { [teacher_id]: {due} } — বেতন লেজার থেকে
   const fileRef = useRef(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const reload = async () => { setRows(await teachersApi.list()); setLoading(false); };
-  useEffect(() => { let alive = true; (async () => { const r = await teachersApi.list(); if (alive) { setRows(r); setLoading(false); } })(); return () => { alive = false; }; }, []);
+  const reload = async () => {
+    const [r, dm] = await Promise.all([teachersApi.list(), salaryLedger.duesByTeacher().catch(() => ({}))]);
+    setRows(r); setDueMap(dm || {}); setLoading(false);
+  };
+  useEffect(() => { let alive = true; (async () => {
+    const [r, dm] = await Promise.all([teachersApi.list(), salaryLedger.duesByTeacher().catch(() => ({}))]);
+    if (alive) { setRows(r); setDueMap(dm || {}); setLoading(false); }
+  })(); return () => { alive = false; }; }, []);
 
   const subjects = useMemo(() => [...new Set(rows.map((r) => r.subject).filter(Boolean))], [rows]);
   const filtered = useMemo(() => {
@@ -89,9 +98,11 @@ export default function TeacherList() {
     { key: "subject", label: "বিষয়", render: (r) => r.subject || "—" },
     { key: "phone", label: "ফোন", render: (r) => bn(r.phone || "—") },
     { key: "salary", label: "বেতন", align: "right", render: (r) => r.salary ? money(num(r.salary)) : "—", exportValue: (r) => num(r.salary), sortable: true },
+    { key: "due", label: "বকেয়া বেতন", align: "right", render: (r) => { const d = num(dueMap[r.id] && dueMap[r.id].due); return d > 0 ? <Badge color="#E53935">{money(d)}</Badge> : <span style={{ color: "#2E7D32" }}>—</span>; }, exportValue: (r) => num(dueMap[r.id] && dueMap[r.id].due) },
     { key: "status", label: "অবস্থা", align: "center", render: (r) => <Badge color={STATUS_COLOR[r.status] || "#607D8B"}>{r.status || "—"}</Badge>, exportValue: (r) => r.status },
     { key: "__a", label: "কার্যক্রম", render: (r) => (
       <div style={{ display: "flex", gap: 5 }}>
+        <Button size="sm" variant="subtle" onClick={() => setPayroll({ teacher: r })} title="বেতন লেজার">💰</Button>
         <Button size="sm" variant="subtle" onClick={() => setDetail(r)}>👁</Button>
         <Button size="sm" variant="subtle" onClick={() => openEdit(r)}>✏</Button>
         <Button size="sm" variant="dangerSoft" onClick={() => del(r)}>🗑</Button>
@@ -99,10 +110,13 @@ export default function TeacherList() {
     ) },
   ];
 
+  // পে-রোল ভিউ (বেতন লেজার / ড্যাশবোর্ড) — বিদ্যমান তালিকা অক্ষুণ্ণ রেখে
+  if (payroll) return <TeacherPayroll teacher={payroll.teacher} startDashboard={payroll.dashboard} onBack={() => { setPayroll(null); reload(); }} />;
+
   return (
     <div>
       <PageHeader icon="👨‍🏫" title="শিক্ষক ব্যবস্থাপনা" description="শিক্ষকের তথ্য, পদবি, বিষয়, বেতন ও ছবি"
-        actions={<Button onClick={openCreate} icon="＋">নতুন শিক্ষক</Button>} />
+        actions={<><Button variant="secondary" onClick={() => setPayroll({ dashboard: true })} icon="💰">পে-রোল ড্যাশবোর্ড</Button><Button onClick={openCreate} icon="＋">নতুন শিক্ষক</Button></>} />
 
       <StatRow>
         <StatCard icon="👥" label="মোট শিক্ষক" value={bn(stats.total)} color="#8E24AA" />

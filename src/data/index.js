@@ -11,6 +11,7 @@ export { boardingBazar } from "./boardingBazar";
 export { backup } from "./backup";
 export { updater } from "./updater";
 export { feeReceipts } from "./feeReceipts";
+export { salaryLedger } from "./salaryLedger";
 export { environment, call } from "./client";
 export { seedResource } from "./webAdapter";
 

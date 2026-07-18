@@ -8,6 +8,7 @@ const boardingBazar = require("./boardingBazar.ipc.cjs");
 const backupIpc = require("./backup.ipc.cjs");
 const kitchen = require("./kitchen.ipc.cjs");
 const feeReceipt = require("./feeReceipt.ipc.cjs");
+const salaryLedger = require("./salaryLedger.ipc.cjs");
 const updater = require("../services/updater.service.cjs");
 const { registerCrud } = require("./crud.ipc.cjs");
 const repos = require("../db/repositories/index.cjs");
@@ -39,6 +40,9 @@ function registerIpc() {
 
   // বেতন ব্যবস্থাপনা (মানি রিসিট)
   feeReceipt.register();
+
+  // শিক্ষক বেতন লেজার (HR/Payroll)
+  salaryLedger.register();
 
   // Auto Update (electron-updater / GitHub Releases)
   updater.register();

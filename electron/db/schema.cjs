@@ -425,6 +425,38 @@ const migrations = [
     const cols = db.all("PRAGMA table_info(teachers)").map((c) => c.name);
     if (!cols.includes("extra")) db.exec("ALTER TABLE teachers ADD COLUMN extra TEXT");
   },
+
+  // ── v13: শিক্ষক বেতন লেজার (HR/Payroll) — ব্যাংক-স্টেটমেন্ট নীতি।
+  //  প্রতিটি বেতন-সংক্রান্ত লেনদেন একটি স্থায়ী, অপরিবর্তনীয় (append-only) সারি।
+  //  কখনো overwrite/delete হয় না; ভুল সংশোধনে বিপরীত এন্ট্রি (reversal) যোগ হয়।
+  //  kind: 'earning'(প্রাপ্য: বেতন/ভাতা/বোনাস) | 'payment'(পরিশোধ/অগ্রিম) | 'deduction'(কর্তন/ঋণ)।
+  //  নিট প্রাপ্য = Σ earning − Σ payment − Σ deduction (running balance)।
+  //  ভবিষ্যতে Finance/Accounts মডিউলের সাথে integrate করার জন্য প্রস্তুত।
+  function v13(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS salary_ledger (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id     INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        teacher_code   TEXT,
+        teacher_name   TEXT,
+        month          TEXT,                       -- YYYY-MM (কোন মাসের বেতন)
+        txn_date       TEXT NOT NULL,              -- প্রকৃত লেনদেনের তারিখ
+        kind           TEXT NOT NULL,              -- earning | payment | deduction
+        category       TEXT NOT NULL,              -- salary/allowance/bonus/payment/advance/loan/deduction/adjustment
+        amount         REAL NOT NULL DEFAULT 0,    -- সর্বদা ধনাত্মক
+        method         TEXT,                       -- নগদ/ব্যাংক/মোবাইল/চেক
+        reference      TEXT,
+        notes          TEXT,
+        collected_by   TEXT,
+        reversed_of    INTEGER,                    -- reversal হলে মূল লেনদেনের id
+        institution_id INTEGER NOT NULL DEFAULT 1,
+        created_at     TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_salledger_teacher ON salary_ledger(teacher_id);
+      CREATE INDEX IF NOT EXISTS idx_salledger_month ON salary_ledger(teacher_id, month);
+      CREATE INDEX IF NOT EXISTS idx_salledger_date ON salary_ledger(txn_date);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।
