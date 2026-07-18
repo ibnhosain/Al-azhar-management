@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
-  students as studentsApi,
+  students as studentsApi, teachers as teachersApi, receipts as receiptsApi,
   expenses as expensesApi, notices as noticesApi,
   sponsors as sponsorsApi, loans as loansApi, orphans as orphansApi,
   academicResults as resultsApi, examRoutine as routineApi, promotions as promotionsApi, staff as staffApi,
@@ -17,6 +17,15 @@ import TeacherList from "./modules/teacher/TeacherList";
 import ReceiptList from "./modules/receipt/ReceiptList";
 import BackupRestore from "./modules/settings/BackupRestore";
 import AutoUpdate from "./modules/settings/AutoUpdate";
+
+// সংখ্যা পার্সার (বাংলা অঙ্ক + ৳/কমা বাদ) — হিসাব গণনায় ব্যবহৃত
+function parseNum(v) {
+  const e = String(v ?? "").replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d));
+  const n = parseFloat(e.replace(/[^\d.]/g, ""));
+  return isNaN(n) ? 0 : n;
+}
+// রশিদের গৃহীত (আয়) — received না থাকলে amount fallback
+const rcvOf = (r) => parseNum(r.received != null && r.received !== "" ? r.received : r.amount);
 
 // নতুন কোড তৈরির সহায়ক: বিদ্যমান সর্বোচ্চ ক্রমিক + ১ (যেমন RCP-005)
 function genCode(list, prefix) {
@@ -34,44 +43,6 @@ const btn = (color="#2E7D32") => ({ background:color, color:"#fff", border:"none
 const tbl = { width:"100%", borderCollapse:"collapse", fontSize:13 };
 const th = { background:"#F5F5F5", padding:"10px 12px", textAlign:"left", color:"#546E7A", fontWeight:600, borderBottom:"1px solid #E0E0E0" };
 const td = { padding:"10px 12px", borderBottom:"1px solid #F5F5F5", color:"#37474F" };
-
-// ──────────────────────── DATA ────────────────────────
-const pieData = [
-  { name:"ভর্তি ফান্ড", value:95, color:"#FF7043" },
-  { name:"বেতন ফান্ড", value:2432, color:"#4CAF50" },
-  { name:"যাকাত ফান্ড", value:1, color:"#FFC107" },
-  { name:"মাহফিল ফান্ড", value:1, color:"#9E9E9E" },
-  { name:"বোর্ডিং", value:1545, color:"#9C27B0" },
-  { name:"বিদ্যুৎ বিল", value:90, color:"#F44336" },
-];
-const barData = [
-  { month:"Jan", সংগ্রহ:0, খরচ:0 },
-  { month:"Feb", সংগ্রহ:0, খরচ:0 },
-  { month:"Mar", সংগ্রহ:12000, খরচ:10000 },
-  { month:"Apr", সংগ্রহ:65000, খরচ:60000 },
-  { month:"May", সংগ্রহ:50000, খরচ:47000 },
-  { month:"Jun", সংগ্রহ:8000, খরচ:6000 },
-];
-const classData = [
-  { name:"নার্সারি গ্রুপ", count:20, color:"#4CAF50", rank:1 },
-  { name:"১ম শ্রেণি", count:13, color:"#26C6DA", rank:2 },
-  { name:"২য় শ্রেণি", count:9, color:"#00BCD4", rank:3 },
-  { name:"১ম বর্ষ", count:3, color:"#4DD0E1", rank:4 },
-  { name:"নাজেরা বিভাগ", count:6, color:"#80DEEA", rank:5 },
-];
-const attendancePieData = [
-  { name:"হাজিরা নেওয়া", value:30, color:"#4CAF50" },
-  { name:"হাজিরা বাকি", value:70, color:"#FFC107" },
-];
-const genderPieData = [
-  { name:"ছাত্র", value:70, color:"#26A69A" },
-  { name:"ছাত্রী", value:30, color:"#FFC107" },
-];
-const topFundsBar = [
-  { name:"বেতন", value:2432, color:"#26A69A" },
-  { name:"বোর্ডিং", value:1545, color:"#FFC107" },
-  { name:"ভর্তি", value:95, color:"#42A5F5" },
-];
 
 // ──────────────────────── STUDENTS DATA ────────────────────────
 const initStudents = [
@@ -137,54 +108,6 @@ function FormRow({ label, children }) {
 
 // ──────────────────────── PAGE: DASHBOARD ────────────────────────
 
-// সমস্ত ট্র্যানজেকশন ডেটা (তারিখ সহ)
-const allTransactions = [
-  { date: new Date(2026,5,8),  type:"বেতন",   income:600,  expense:0   },
-  { date: new Date(2026,5,7),  type:"বোর্ডিং", income:800,  expense:0   },
-  { date: new Date(2026,5,6),  type:"বেতন",   income:500,  expense:0   },
-  { date: new Date(2026,5,5),  type:"খরচ",    income:0,    expense:300 },
-  { date: new Date(2026,5,1),  type:"ভর্তি",  income:95,   expense:0   },
-  { date: new Date(2026,4,20), type:"বেতন",   income:2432, expense:0   },
-  { date: new Date(2026,4,15), type:"বোর্ডিং",income:1545, expense:0   },
-  { date: new Date(2026,4,10), type:"খরচ",    income:0,    expense:2222},
-  { date: new Date(2026,3,5),  type:"যাকাত",  income:0,    expense:0   },
-  { date: new Date(2025,11,1), type:"বেতন",   income:1800, expense:0   },
-  { date: new Date(2025,11,1), type:"খরচ",    income:0,    expense:1500},
-  { date: new Date(2025,10,1), type:"বেতন",   income:1700, expense:0   },
-  { date: new Date(2025,10,1), type:"খরচ",    income:0,    expense:1400},
-];
-
-function getFilteredData(period) {
-  const now = new Date();
-  const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  let from, to;
-  if (period === "আজ") {
-    from = startOf(now); to = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1);
-  } else if (period === "এই সপ্তাহ") {
-    const day = now.getDay() === 0 ? 6 : now.getDay()-1;
-    from = startOf(new Date(now.getFullYear(), now.getMonth(), now.getDate()-day));
-    to = new Date(from.getTime() + 7*86400000);
-  } else if (period === "এই মাস") {
-    from = new Date(now.getFullYear(), now.getMonth(), 1);
-    to = new Date(now.getFullYear(), now.getMonth()+1, 1);
-  } else if (period === "এই বছর") {
-    from = new Date(now.getFullYear(), 0, 1);
-    to = new Date(now.getFullYear()+1, 0, 1);
-  } else if (period === "গত বছর") {
-    from = new Date(now.getFullYear()-1, 0, 1);
-    to = new Date(now.getFullYear(), 0, 1);
-  } else {
-    from = null; to = null; // সর্বকাল
-  }
-  const filtered = from
-    ? allTransactions.filter(t => t.date >= from && t.date < to)
-    : allTransactions;
-  const totalIncome  = filtered.reduce((s,t) => s+t.income,  0);
-  const totalExpense = filtered.reduce((s,t) => s+t.expense, 0);
-  const balance      = totalIncome - totalExpense;
-  return { totalIncome, totalExpense, balance, count: filtered.length };
-}
-
 function toBn(n) {
   return ("৳" + n.toLocaleString("en")).replace(/[0-9]/g, d => "০১২৩৪৫৬৭৮৯"[d]);
 }
@@ -192,57 +115,109 @@ function toBn(n) {
 function Dashboard() {
   const [activePeriod, setActivePeriod] = useState("সর্বকাল");
   const periods = ["সর্বকাল","আজ","এই সপ্তাহ","এই মাস","এই বছর","গত বছর"];
+  const [data, setData] = useState({ students: [], teachers: [], receipts: [], expenses: [], attendance: [] });
 
-  const { totalIncome, totalExpense, balance } = getFilteredData(activePeriod);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [students, teachers, receipts, expenses] = await Promise.all([
+        studentsApi.list().catch(() => []), teachersApi.list().catch(() => []),
+        receiptsApi.list().catch(() => []), expensesApi.list().catch(() => []),
+      ]);
+      const attendance = await attendanceApi.getByDate(new Date().toISOString().slice(0, 10)).catch(() => []);
+      if (alive) setData({ students: students || [], teachers: teachers || [], receipts: receipts || [], expenses: expenses || [], attendance: attendance || [] });
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const bnN = (n) => String(n).replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
+  const now = new Date();
+  const range = (() => {
+    const s = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if (activePeriod === "আজ") return [s(now), new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)];
+    if (activePeriod === "এই সপ্তাহ") { const day = now.getDay() === 0 ? 6 : now.getDay() - 1; const f = s(new Date(now.getFullYear(), now.getMonth(), now.getDate() - day)); return [f, new Date(f.getTime() + 7 * 86400000)]; }
+    if (activePeriod === "এই মাস") return [new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 1)];
+    if (activePeriod === "এই বছর") return [new Date(now.getFullYear(), 0, 1), new Date(now.getFullYear() + 1, 0, 1)];
+    if (activePeriod === "গত বছর") return [new Date(now.getFullYear() - 1, 0, 1), new Date(now.getFullYear(), 0, 1)];
+    return [null, null];
+  })();
+  const inRange = (dstr) => { if (!range[0]) return true; const d = new Date(dstr); return !isNaN(d) && d >= range[0] && d < range[1]; };
+
+  const rc = data.receipts.filter((r) => inRange(r.date));
+  const ex = data.expenses.filter((e) => inRange(e.date));
+  const totalIncome = rc.reduce((s, r) => s + rcvOf(r), 0);
+  const totalExpense = ex.reduce((s, e) => s + parseNum(e.amount), 0);
+  const balance = totalIncome - totalExpense;
+  const inactiveCount = data.students.filter((s) => (s.status || "সক্রিয়") !== "সক্রিয়").length;
 
   const stats = [
-    { icon:"🎓", label:"মোট শিক্ষার্থী", value:"৫১", color:"#FF7043", bg:"#FFF3F0" },
+    { icon:"🎓", label:"মোট শিক্ষার্থী", value:bnN(data.students.length), color:"#FF7043", bg:"#FFF3F0" },
     { icon:"💵", label:"সর্বমোট সংগ্রহ", value: toBn(totalIncome), color:"#00BCD4", bg:"#E0F7FA" },
     { icon:"💸", label:"সর্বমোট খরচ",    value: toBn(totalExpense), color:"#4CAF50", bg:"#E8F5E9" },
-    { icon:"💳", label:"বর্তমান ব্যালেন্স", value: toBn(balance),  color:"#FFC107", bg:"#FFF8E1" },
-    { icon:"👨‍🏫", label:"মোট শিক্ষক", value:"৬", color:"#9C27B0", bg:"#F3E5F5" },
-    { icon:"👤", label:"ইনঅ্যাক্টিভ শিক্ষার্থী", value:"৩", color:"#F44336", bg:"#FFEBEE" },
+    { icon:"💳", label:"বর্তমান ব্যালেন্স", value: toBn(balance),  color: balance < 0 ? "#F44336" : "#FFC107", bg:"#FFF8E1" },
+    { icon:"👨‍🏫", label:"মোট শিক্ষক", value:bnN(data.teachers.length), color:"#9C27B0", bg:"#F3E5F5" },
+    { icon:"👤", label:"ইনঅ্যাক্টিভ শিক্ষার্থী", value:bnN(inactiveCount), color:"#F44336", bg:"#FFEBEE" },
   ];
 
-  // ফান্ড কার্ডের মান পিরিয়ড অনুযায়ী
-  const periodFunds = {
-    "সর্বকাল": [95, 2432, 0, 0, 1545, 90],
-    "আজ":      [0,  600,  0, 0, 0,    0 ],
-    "এই সপ্তাহ":[0, 1100, 0, 0, 800,  0 ],
-    "এই মাস":  [95, 600,  0, 0, 800,  0 ],
-    "এই বছর":  [95, 2432, 0, 0, 1545, 90],
-    "গত বছর":  [0,  3500, 0, 0, 0,    0 ],
-  };
-  const fv = periodFunds[activePeriod] || periodFunds["সর্বকাল"];
+  // ফান্ড — রশিদের ধরন অনুযায়ী বাস্তব গৃহীত যোগফল
+  const byType = (...ts) => rc.filter((r) => ts.includes(r.type)).reduce((s, r) => s + rcvOf(r), 0);
+  const fv = [byType("ভর্তি"), byType("বেতন"), byType("যাকাত", "অনুদান", "সদকা", "ফিতরা"), byType("পরীক্ষা ফি"), byType("বোর্ডিং"), totalExpense];
   const funds = [
     { icon:"📥", label:"ভর্তি ফান্ড", value:toBn(fv[0]), color:"#FF7043", bg:"#FFF3F0" },
     { icon:"💼", label:"বেতন ফান্ড",  value:toBn(fv[1]), color:"#00BCD4", bg:"#E0F7FA" },
-    { icon:"🤲", label:"যাকাত ফান্ড", value:toBn(fv[2]), color:"#4CAF50", bg:"#E8F5E9" },
-    { icon:"🕌", label:"মাহফিল ফান্ড",value:toBn(fv[3]), color:"#FFC107", bg:"#FFF8E1" },
+    { icon:"🤲", label:"যাকাত/অনুদান", value:toBn(fv[2]), color:"#4CAF50", bg:"#E8F5E9" },
+    { icon:"📝", label:"পরীক্ষা ফান্ড",value:toBn(fv[3]), color:"#FFC107", bg:"#FFF8E1" },
     { icon:"🏠", label:"বোর্ডিং",     value:toBn(fv[4]), color:"#9C27B0", bg:"#F3E5F5" },
-    { icon:"⚡", label:"বিদ্যুৎ বিল", value:toBn(fv[5]), color:"#F44336", bg:"#FFEBEE" },
+    { icon:"💸", label:"মোট খরচ",     value:toBn(fv[5]), color:"#F44336", bg:"#FFEBEE" },
   ];
 
-  // বার চার্ট ডেটা পিরিয়ড অনুযায়ী
-  const chartData = {
-    "সর্বকাল": barData,
-    "আজ":       [{ month:"আজ", সংগ্রহ:600, খরচ:0 }],
-    "এই সপ্তাহ":[{ month:"সোম", সংগ্রহ:600, খরচ:0 },{ month:"মঙ্গল", সংগ্রহ:500, খরচ:300 },{ month:"বুধ", সংগ্রহ:0, খরচ:0 },{ month:"বৃহ", সংগ্রহ:800, খরচ:0 },{ month:"শুক্র", সংগ্রহ:0, খরচ:0 }],
-    "এই মাস":  [{ month:"সপ্তাহ ১", সংগ্রহ:95, খরচ:0 },{ month:"সপ্তাহ ২", সংগ্রহ:1100, খরচ:300 }],
-    "এই বছর":  barData,
-    "গত বছর":  [{ month:"Nov", সংগ্রহ:1700, খরচ:1400 },{ month:"Dec", সংগ্রহ:1800, খরচ:1500 }],
-  };
-  const activeBarData = chartData[activePeriod] || barData;
+  // বার চার্ট — বাস্তব শেষ ৬ মাসের আয়/খরচ
+  const MON = ["জানু","ফেব","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্ট","অক্টো","নভে","ডিসে"];
+  const activeBarData = Array.from({ length: 6 }, (_, k) => {
+    const i = 5 - k;
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const nx = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const inb = (x) => { const t = new Date(x); return t >= d && t < nx; };
+    return { month: MON[d.getMonth()],
+      সংগ্রহ: data.receipts.filter((r) => inb(r.date)).reduce((s, r) => s + rcvOf(r), 0),
+      খরচ: data.expenses.filter((e) => inb(e.date)).reduce((s, e) => s + parseNum(e.amount), 0) };
+  });
 
-  // পাই ডেটা পিরিয়ড অনুযায়ী
+  // পাই — বাস্তব ফান্ড বণ্টন
   const activePieData = [
-    { name:"ভর্তি ফান্ড", value:Math.max(fv[0],1), color:"#FF7043" },
-    { name:"বেতন ফান্ড",  value:Math.max(fv[1],1), color:"#4CAF50" },
-    { name:"যাকাত ফান্ড", value:Math.max(fv[2],1), color:"#FFC107" },
-    { name:"মাহফিল ফান্ড",value:Math.max(fv[3],1), color:"#9E9E9E" },
-    { name:"বোর্ডিং",     value:Math.max(fv[4],1), color:"#9C27B0" },
-    { name:"বিদ্যুৎ বিল", value:Math.max(fv[5],1), color:"#F44336" },
+    { name:"ভর্তি", value:Math.max(fv[0], 0.001), color:"#FF7043" },
+    { name:"বেতন",  value:Math.max(fv[1], 0.001), color:"#4CAF50" },
+    { name:"যাকাত/অনুদান", value:Math.max(fv[2], 0.001), color:"#FFC107" },
+    { name:"পরীক্ষা", value:Math.max(fv[3], 0.001), color:"#9E9E9E" },
+    { name:"বোর্ডিং",  value:Math.max(fv[4], 0.001), color:"#9C27B0" },
   ];
+
+  // শ্রেণিভিত্তিক শিক্ষার্থী (বাস্তব)
+  const classColors = ["#FFC107","#42A5F5","#66BB6A","#AB47BC","#FF7043","#26A69A","#EC407A","#5C6BC0"];
+  const clsCount = {};
+  data.students.forEach((s) => { const c = s.class || "অন্যান্য"; clsCount[c] = (clsCount[c] || 0) + 1; });
+  const classData = Object.entries(clsCount).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count], i) => ({ rank: i + 1, name, count, color: classColors[i % classColors.length] }));
+  const maxClass = Math.max(1, ...classData.map((c) => c.count));
+  const topClass = classData[0];
+
+  // লিঙ্গ অনুপাত (বাস্তব)
+  const boys = data.students.filter((s) => s.gender === "ছাত্র").length;
+  const girls = data.students.filter((s) => s.gender === "ছাত্রী").length;
+  const genderPieData = [{ name:"ছাত্র", value:Math.max(boys, 0.001), color:"#42A5F5" }, { name:"ছাত্রী", value:Math.max(girls, 0.001), color:"#EC407A" }];
+
+  // হাজিরা পাই (বাস্তব — status অনুযায়ী)
+  const attStatus = {};
+  data.attendance.forEach((a) => { const s = a.status || "—"; attStatus[s] = (attStatus[s] || 0) + 1; });
+  const attColors = { "উপস্থিত": "#66BB6A", "অনুপস্থিত": "#EF5350", "ছুটি": "#FFA726", "present": "#66BB6A", "absent": "#EF5350" };
+  const attendancePieData = Object.keys(attStatus).length
+    ? Object.entries(attStatus).map(([name, value], i) => ({ name, value, color: attColors[name] || classColors[i % classColors.length] }))
+    : [{ name:"তথ্য নেই", value:1, color:"#E0E0E0" }];
+
+  // শীর্ষ ৩ ফান্ড (বাস্তব)
+  const topFundsBar = [
+    { name:"ভর্তি", value:fv[0], color:"#FF7043" }, { name:"বেতন", value:fv[1], color:"#4CAF50" },
+    { name:"বোর্ডিং", value:fv[4], color:"#9C27B0" },
+  ].sort((a, b) => b.value - a.value).slice(0, 3);
 
   return (
     <div>
@@ -343,7 +318,7 @@ function Dashboard() {
       <div style={card}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
           <div style={sectionTitle}>শ্রেণিভিত্তিক শিক্ষার্থী সংখ্যা</div>
-          <div style={badge("#2E7D32")}>সর্বোচ্চ: নার্সারি (২০)</div>
+          {topClass && <div style={badge("#2E7D32")}>সর্বোচ্চ: {topClass.name} ({bnN(topClass.count)})</div>}
         </div>
         {classData.map((c,i) => (
           <div key={i} style={{ marginBottom:12 }}>
@@ -352,10 +327,10 @@ function Dashboard() {
                 <div style={{ width:22, height:22, borderRadius:"50%", background:i===0?"#FFC107":"#E0E0E0", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:i===0?"#fff":"#546E7A" }}>{c.rank}</div>
                 <span style={{ fontSize:13, color:"#37474F" }}>{c.name}</span>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:c.color }}>{c.count}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:c.color }}>{bnN(c.count)}</span>
             </div>
             <div style={{ background:"#F5F5F5", borderRadius:4, height:8 }}>
-              <div style={{ height:"100%", width:`${(c.count/20)*100}%`, background:c.color, borderRadius:4 }}/>
+              <div style={{ height:"100%", width:`${(c.count/maxClass)*100}%`, background:c.color, borderRadius:4 }}/>
             </div>
           </div>
         ))}
@@ -495,27 +470,26 @@ function Attendance() {
 // ──────────────────────── PAGE: FINANCE ────────────────────────
 function Finance() {
   const [expenses, setExpenses] = useState([]);
+  const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ title:"", amount:"", date:"", category:"বেতন" });
 
-  const reload = async () => { setExpenses(await expensesApi.list()); setLoading(false); };
+  const reload = async () => { const [ex, rc] = await Promise.all([expensesApi.list(), receiptsApi.list().catch(()=>[])]); setExpenses(ex); setReceipts(rc||[]); setLoading(false); };
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (environment === "web") {
-        seedResource("expenses", [
-          { code:"EXP-001", title:"শিক্ষক বেতন", amount:"৳১৫,০০০", date:"০১/০৬/২০২৬", category:"বেতন" },
-          { code:"EXP-002", title:"বিদ্যুৎ বিল", amount:"৳৯০", date:"০২/০৬/২০২৬", category:"ইউটিলিটি" },
-          { code:"EXP-003", title:"পরিষ্কার সামগ্রী", amount:"৳৩০০", date:"০৩/০৬/২০২৬", category:"রক্ষণাবেক্ষণ" },
-        ]);
-      }
-      const rows = await expensesApi.list();
-      if (alive) { setExpenses(rows); setLoading(false); }
+      const [rows, rc] = await Promise.all([expensesApi.list(), receiptsApi.list().catch(()=>[])]);
+      if (alive) { setExpenses(rows); setReceipts(rc||[]); setLoading(false); }
     })();
     return () => { alive = false; };
   }, []);
+
+  // বাস্তব হিসাব: আয় = রশিদের গৃহীত যোগফল; খরচ = খরচের যোগফল; ব্যালেন্স = আয় − খরচ
+  const totalIncome  = receipts.reduce((s, r) => s + rcvOf(r), 0);
+  const totalExpense = expenses.reduce((s, e) => s + parseNum(e.amount), 0);
+  const balance      = totalIncome - totalExpense;
 
   const save = async () => {
     if (!form.title || !form.amount) return alert("শিরোনাম ও পরিমাণ আবশ্যক");
@@ -533,9 +507,9 @@ function Finance() {
         <button onClick={() => setModal(true)} style={btn()}>+ নতুন খরচ এন্ট্রি</button>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:16 }}>
-        <div style={{ background:"#E0F7FA", borderRadius:10, padding:16, textAlign:"center" }}><div style={{ fontSize:20, fontWeight:700, color:"#00BCD4" }}>৳৪,১৬২</div><div style={{ fontSize:12, color:"#546E7A" }}>মোট সংগ্রহ</div></div>
-        <div style={{ background:"#FFEBEE", borderRadius:10, padding:16, textAlign:"center" }}><div style={{ fontSize:20, fontWeight:700, color:"#F44336" }}>৳২,৫২২</div><div style={{ fontSize:12, color:"#546E7A" }}>মোট খরচ</div></div>
-        <div style={{ background:"#E8F5E9", borderRadius:10, padding:16, textAlign:"center" }}><div style={{ fontSize:20, fontWeight:700, color:"#4CAF50" }}>৳১,৬৪০</div><div style={{ fontSize:12, color:"#546E7A" }}>বর্তমান ব্যালেন্স</div></div>
+        <div style={{ background:"#E0F7FA", borderRadius:10, padding:16, textAlign:"center" }}><div style={{ fontSize:20, fontWeight:700, color:"#00BCD4" }}>{toBn(totalIncome)}</div><div style={{ fontSize:12, color:"#546E7A" }}>মোট সংগ্রহ</div></div>
+        <div style={{ background:"#FFEBEE", borderRadius:10, padding:16, textAlign:"center" }}><div style={{ fontSize:20, fontWeight:700, color:"#F44336" }}>{toBn(totalExpense)}</div><div style={{ fontSize:12, color:"#546E7A" }}>মোট খরচ</div></div>
+        <div style={{ background:"#E8F5E9", borderRadius:10, padding:16, textAlign:"center" }}><div style={{ fontSize:20, fontWeight:700, color: balance < 0 ? "#F44336" : "#4CAF50" }}>{toBn(balance)}</div><div style={{ fontSize:12, color:"#546E7A" }}>বর্তমান ব্যালেন্স</div></div>
       </div>
       <div style={card}>
         <div style={{ fontSize:13, fontWeight:600, color:"#37474F", marginBottom:12 }}>খরচের তালিকা</div>
