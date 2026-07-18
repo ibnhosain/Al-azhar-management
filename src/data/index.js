@@ -51,6 +51,9 @@ export { mealList } from "./mealList";
 export const holidays = makeCrud("holidays");
 export const mealPauses = makeCrud("meal_pauses");
 
+// schema v17 — দৈনিক বাড়ির কাজ
+export const homework = makeCrud("homework");
+
 // schema v7 — Kitchen পরিকল্পনা (উপকরণ / পদ / রেসিপি / মেনু)
 export const ingredients = makeCrud("ingredient");
 export const dishes = makeCrud("dish");

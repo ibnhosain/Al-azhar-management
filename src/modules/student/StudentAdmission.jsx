@@ -13,6 +13,7 @@ const SECTIONS = ["ক", "খ", "গ"];
 const BLOODS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const toBn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 
 const emptyForm = () => ({
   form_no: "", adm_date: todayISO(), admission_type: "নতুন ভর্তি", name: "",
@@ -240,13 +241,11 @@ export default function StudentAdmission({ onBack, onSaved }) {
           <Card style={{ marginBottom: 16 }}>
             <SecHead icon="📅" bn="মাসিক ফি নির্ধারণ" en="Monthly Fee Setup" />
             <div style={{ fontSize: 12.5, color: "#78909C", marginBottom: 12, marginTop: -6 }}>
-              এই শিক্ষার্থী প্রতি মাসে কত বেতন{form.student_type === "আবাসিক" ? " ও বোর্ডিং ফি" : ""} দিবে তা এখানে নির্ধারণ করুন। বেতন আদায়ের সময় এই পরিমাণই ব্যবহৃত হবে এবং বকেয়া হিসাব এর ভিত্তিতে হবে।
+              এই শিক্ষার্থী প্রতি মাসে কত বেতন ও বোর্ডিং ফি দিবে তা এখানে নির্ধারণ করুন। বেতন আদায়ের সময় এই পরিমাণই ব্যবহৃত হবে এবং বকেয়া হিসাব এর ভিত্তিতে হবে। {form.student_type !== "আবাসিক" && "(অনাবাসিক হলে বোর্ডিং ফি খালি রাখতে পারেন।)"}
             </div>
             <div style={grid}>
               <TextField label="মাসিক বেতন / Monthly Tuition" value={form.monthly_fee} onChange={(v) => set("monthly_fee", v.replace(/[^\d.]/g, ""))} />
-              {form.student_type === "আবাসিক" && (
-                <TextField label="মাসিক বোর্ডিং ফি / Monthly Boarding" value={form.boarding_fee} onChange={(v) => set("boarding_fee", v.replace(/[^\d.]/g, ""))} />
-              )}
+              <TextField label="মাসিক বোর্ডিং ফি / Monthly Boarding" value={form.boarding_fee} onChange={(v) => set("boarding_fee", v.replace(/[^\d.]/g, ""))} />
             </div>
           </Card>
 
@@ -258,7 +257,7 @@ export default function StudentAdmission({ onBack, onSaved }) {
               <TextField label="গৃহীত / Received" value={form.received} onChange={(v) => set("received", v.replace(/[^\d.]/g, ""))} />
               <div>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5a6a72", marginBottom: 5 }}>ভর্তি ফি বকেয়া / Due</div>
-                <div style={{ padding: "11px 12px", border: "1px solid #E0E0E0", borderRadius: 8, background: "#f7faf7", fontWeight: 700, color: due > 0 ? "#E53935" : "#2E7D32" }}>৳ {due.toLocaleString("en-US")}</div>
+                <div style={{ padding: "11px 12px", border: "1px solid #E0E0E0", borderRadius: 8, background: "#f7faf7", fontWeight: 700, color: due > 0 ? "#E53935" : "#2E7D32" }}>৳ {toBn(due.toLocaleString("en-US"))}</div>
               </div>
             </div>
             <div style={{ marginTop: 10 }}><Badge color="#00838F">শিক্ষার্থী: {form.name || "—"}</Badge> <Badge color="#6A1B9A">শ্রেণি: {form.class}</Badge></div>

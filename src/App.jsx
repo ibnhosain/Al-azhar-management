@@ -12,6 +12,7 @@ import KitchenModule from "./modules/kitchen/KitchenModule";
 import StudentAdmission from "./modules/student/StudentAdmission";
 import StudentList from "./modules/student/StudentList";
 import StudentFee from "./modules/student/StudentFee";
+import StudentHomework from "./modules/student/StudentHomework";
 import TeacherList from "./modules/teacher/TeacherList";
 import ReceiptList from "./modules/receipt/ReceiptList";
 import BackupRestore from "./modules/settings/BackupRestore";
@@ -1534,7 +1535,9 @@ function StudentModule({ initialView }) {
     // ভর্তি ফরম ও তালিকা নিজস্ব হেডার/back রাখে → সরাসরি render
     if (view === "admission") return <StudentAdmission onBack={() => setView("landing")} />;
     if (view === "list") return <StudentList onBack={() => setView("landing")} />;
+    if (view === "inactive") return <StudentList onBack={() => setView("landing")} statusFilter="নিষ্ক্রিয়" />;
     if (view === "fee") return <StudentFee onBack={() => setView("landing")} />;
+    if (view === "homework") return <StudentHomework onBack={() => setView("landing")} />;
     let content;
     if (view === "attendance") content = <Attendance/>;
     else content = <div style={{ ...card, textAlign:"center", padding:"50px 20px", color:"#78909C" }}>“{tile.label}” — পরবর্তী ধাপে যুক্ত হবে।</div>;
@@ -1649,7 +1652,7 @@ export default function App() {
           <span style={{ fontWeight:700, fontSize:16, color:"#1A237E" }}>মাদরাসাতুল আযহার আল-আরাবিয়া</span>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:34, height:34, borderRadius:"50%", background:"#E8F5E9", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🕌</div>
-            <span style={{ fontSize:18, cursor:"pointer" }}>🔔</span>
+            <span onClick={() => goTo(13)} title="নোটিশ এবং ঘোষণা" style={{ fontSize:18, cursor:"pointer" }}>🔔</span>
           </div>
         </div>
 

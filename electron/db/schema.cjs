@@ -521,6 +521,21 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_salreceipt_teacher ON salary_receipts(teacher_id);
     `);
   },
+
+  // ── v17: দৈনিক বাড়ির কাজ (homework) — entities config থেকে auto CRUD; existing DB-র জন্য টেবিল।
+  function v17(db) {
+    const entities = require("./entities.cjs");
+    const columns = entities.homework;
+    const cols = columns.map((c) => `        ${c} TEXT`).join(",\n");
+    db.exec(
+      `CREATE TABLE IF NOT EXISTS homework (\n` +
+        `        id INTEGER PRIMARY KEY AUTOINCREMENT,\n` +
+        `${cols},\n` +
+        `        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))\n` +
+        `      );\n` +
+      `      CREATE INDEX IF NOT EXISTS idx_homework_date ON homework(h_date);`
+    );
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

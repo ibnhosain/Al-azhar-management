@@ -30,4 +30,7 @@ module.exports = {
   // Kitchen & Meal (schema v6) — auto CRUD; student_meal_profiles আলাদা (custom repo)
   holidays:    ["h_date", "holiday_type", "title", "off_breakfast", "off_lunch", "off_dinner", "note"],
   meal_pauses: ["student_code", "student_name", "from_date", "to_date", "reason", "note"],
+
+  // দৈনিক বাড়ির কাজ (schema v17) — শ্রেণি/তারিখ-ভিত্তিক হোমওয়ার্ক
+  homework:    ["h_date", "class", "section", "subject", "title", "detail", "assigned_by"],
 };

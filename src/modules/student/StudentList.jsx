@@ -20,7 +20,7 @@ function Avatar({ src, name }) {
 
 const emptyFilters = { class: "", session: "", section: "", student_type: "", admission_type: "", orphan: "", gender: "" };
 
-export default function StudentList({ onBack }) {
+export default function StudentList({ onBack, statusFilter }) {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +64,7 @@ export default function StudentList({ onBack }) {
   const opts = (arr, all) => [{ value: "", label: all }, ...arr.map((v) => ({ value: v, label: v }))];
 
   const filtered = useMemo(() => rows.filter((r) =>
+    (!statusFilter || (r.status || "সক্রিয়") === statusFilter) &&
     (!flt.class || r.class === flt.class) &&
     (!flt.session || r.session === flt.session) &&
     (!flt.section || r.section === flt.section) &&
@@ -71,7 +72,7 @@ export default function StudentList({ onBack }) {
     (!flt.admission_type || r.admission_type === flt.admission_type) &&
     (!flt.orphan || r.orphan === flt.orphan) &&
     (!flt.gender || r.gender === flt.gender)
-  ), [rows, flt]);
+  ), [rows, flt, statusFilter]);
 
   const totalReceived = useMemo(() => filtered.reduce((s, r) => s + num(r.received ?? r.fee), 0), [filtered]);
   const totalDue = useMemo(() => filtered.reduce((s, r) => s + num(dueMap[r.id] && dueMap[r.id].due), 0), [filtered, dueMap]);
@@ -110,9 +111,9 @@ export default function StudentList({ onBack }) {
 
   return (
     <div>
-      <PageHeader icon="📋" title="শিক্ষার্থীর তালিকা" description="শ্রেণি · শিক্ষাবর্ষ · সেকশন" onBack={onBack}
-        breadcrumb={[{ label: "শিক্ষার্থী ব্যবস্থাপনা", onClick: onBack }, { label: "শিক্ষার্থীর তালিকা" }]}
-        actions={<Button onClick={() => setMode("admission")} icon="＋">তৈরি করুন</Button>} />
+      <PageHeader icon={statusFilter === "নিষ্ক্রিয়" ? "🚫" : "📋"} title={statusFilter === "নিষ্ক্রিয়" ? "নিষ্ক্রিয় শিক্ষার্থী" : "শিক্ষার্থীর তালিকা"} description="শ্রেণি · শিক্ষাবর্ষ · সেকশন" onBack={onBack}
+        breadcrumb={[{ label: "শিক্ষার্থী ব্যবস্থাপনা", onClick: onBack }, { label: statusFilter === "নিষ্ক্রিয়" ? "নিষ্ক্রিয় শিক্ষার্থী" : "শিক্ষার্থীর তালিকা" }]}
+        actions={statusFilter ? null : <Button onClick={() => setMode("admission")} icon="＋">তৈরি করুন</Button>} />
 
       <StatRow>
         <StatCard icon="👥" label="মোট শিক্ষার্থী" value={bn(filtered.length)} color="#2E7D32" />
