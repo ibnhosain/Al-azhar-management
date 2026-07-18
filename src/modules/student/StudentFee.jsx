@@ -111,10 +111,15 @@ function FeeCreate({ students, onBack, onSaved }) {
   const student = students.find((s) => String(s.id) === String(studentId));
   const feeSet = student && (nz(student.monthly_fee) > 0 || nz(student.boarding_fee) > 0);
 
-  // বকেয়া মোডে শুধু বকেয়াযুক্ত মাস; সম্পূর্ণ মোডে সব মাস
+  // বকেয়া মোডে: বকেয়া মাসগুলো আগে (বাকিসহ), তারপর বাকি সব মাস — তালিকা কখনো খালি থাকবে না।
   const monthChoices = useMemo(() => {
-    if (mode === "due") return [{ value: "", label: "— বকেয়া মাস বাছুন —" },
-      ...((summary && summary.dueMonths) || []).map((m) => ({ value: m.month, label: `${m.month} · বাকি ${money(m.due)}` }))];
+    if (mode === "due") {
+      const dueList = (summary && summary.dueMonths) || [];
+      const dueSet = new Set(dueList.map((m) => m.month));
+      const dueOpts = dueList.map((m) => ({ value: m.month, label: `${m.month} · বাকি ${money(m.due)}` }));
+      const others = monthOpts(year).filter((o) => o.value && !dueSet.has(o.value));
+      return [{ value: "", label: dueList.length ? "— বকেয়া মাস বাছুন —" : "— মাস বাছুন —" }, ...dueOpts, ...others];
+    }
     return [{ value: "", label: "— মাস বাছুন —" }, ...monthOpts(year)];
   }, [mode, summary, year]);
 

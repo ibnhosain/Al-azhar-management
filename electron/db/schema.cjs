@@ -536,6 +536,14 @@ const migrations = [
       `      CREATE INDEX IF NOT EXISTS idx_homework_date ON homework(h_date);`
     );
   },
+
+  // ── v18: রশিদ ব্যবস্থাপনায় বকেয়া সিস্টেম — receipts টেবিলে total/received/due কলাম।
+  function v18(db) {
+    const cols = db.all("PRAGMA table_info(receipts)").map((c) => c.name);
+    for (const c of ["total", "received", "due"]) {
+      if (!cols.includes(c)) db.exec(`ALTER TABLE receipts ADD COLUMN ${c} TEXT`);
+    }
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

@@ -5,7 +5,7 @@
 //  সব কলাম TEXT (nullable); বাধ্যবাধকতা UI-তে যাচাই হয়।
 // ────────────────────────────────────────────────────────────────
 module.exports = {
-  receipts: ["code", "student", "class", "roll", "type", "amount", "date", "status"],
+  receipts: ["code", "student", "class", "roll", "type", "amount", "total", "received", "due", "date", "status"],
   expenses: ["code", "title", "amount", "date", "category"],
   notices:  ["title", "priority", "body", "date"],
   boarding: ["code", "name", "room", "floor", "fee", "status"],
