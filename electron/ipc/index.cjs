@@ -11,6 +11,7 @@ const feeReceipt = require("./feeReceipt.ipc.cjs");
 const salaryLedger = require("./salaryLedger.ipc.cjs");
 const teacherAcademic = require("./teacherAcademic.ipc.cjs");
 const teacherDocument = require("./teacherDocument.ipc.cjs");
+const system = require("./system.ipc.cjs");
 const updater = require("../services/updater.service.cjs");
 const { registerCrud } = require("./crud.ipc.cjs");
 const repos = require("../db/repositories/index.cjs");
@@ -51,6 +52,9 @@ function registerIpc() {
 
   // শিক্ষক ডকুমেন্ট (নিয়োগপত্র/NID/CV ইত্যাদি)
   teacherDocument.register();
+
+  // বহিঃসংযোগ (WhatsApp/Email/SMS)
+  system.register();
 
   // Auto Update (electron-updater / GitHub Releases)
   updater.register();

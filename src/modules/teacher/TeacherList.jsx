@@ -3,6 +3,7 @@ import { PageHeader, DataTable, StatCard, StatRow, Badge, Button, Modal, useToas
 import { teachers as teachersApi, salaryLedger } from "../../data";
 import TeacherPayroll from "./TeacherPayroll";
 import TeacherProfile from "./TeacherProfile";
+import TeacherReminders from "./TeacherReminders";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const num = (v) => { const e = String(v ?? "").replace(/[০-৯]/g, (d) => "০১২৩৪৫৬৭৮৯".indexOf(d)); const n = parseFloat(e.replace(/[^\d.]/g, "")); return isNaN(n) ? 0 : n; };
@@ -32,7 +33,7 @@ function Avatar({ src, name, size = 40 }) {
 const emptyForm = () => ({
   name: "", designation: "সহকারী শিক্ষক", department: "", subject: "", qualification: "", skills: "",
   phone: "", whatsapp: "", email: "", nid: "", dob: "", blood_group: "", emergency_contact: "",
-  salary: "", join_date: "", employment_type: "স্থায়ী", address: "", status: "সক্রিয়", photo: null,
+  salary: "", join_date: "", employment_type: "স্থায়ী", contract_end: "", increment_due: "", address: "", status: "সক্রিয়", photo: null,
 });
 const FIELDS = Object.keys(emptyForm());
 const pickForm = (r) => { const f = { ...emptyForm() }; for (const k of FIELDS) if (r[k] != null) f[k] = r[k]; f.code = r.code || ""; return f; };
@@ -50,6 +51,7 @@ export default function TeacherList() {
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);     // খোলা শিক্ষকের প্রোফাইল (৪-ট্যাব পেজ)
   const [payroll, setPayroll] = useState(null);     // null | {teacher} | {dashboard:true}
+  const [reminders, setReminders] = useState(false); // রিমাইন্ডার ভিউ
   const [dueMap, setDueMap] = useState({});          // { [teacher_id]: {due} } — বেতন লেজার থেকে
   const fileRef = useRef(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -157,6 +159,8 @@ export default function TeacherList() {
         <ComboField label="বিভাগ (Department)" value={form.department} onChange={(v) => set("department", v)} options={DEPARTMENTS} />
         <SelectField label="নিয়োগের ধরন" value={form.employment_type} onChange={(v) => set("employment_type", v)} options={EMPLOYMENT_TYPES} />
         <DateField label="যোগদানের তারিখ" value={form.join_date} onChange={(v) => set("join_date", v)} />
+        <DateField label="চুক্তি শেষের তারিখ" value={form.contract_end} onChange={(v) => set("contract_end", v)} />
+        <DateField label="ইনক্রিমেন্টের তারিখ" value={form.increment_due} onChange={(v) => set("increment_due", v)} />
         <TextField label="বিষয়" value={form.subject} onChange={(v) => set("subject", v)} />
         <TextField label="শিক্ষাগত যোগ্যতা" value={form.qualification} onChange={(v) => set("qualification", v)} />
         <TextField label="দক্ষতা / Skills" value={form.skills} onChange={(v) => set("skills", v)} />
@@ -177,10 +181,13 @@ export default function TeacherList() {
   // পে-রোল ভিউ (বেতন লেজার / ড্যাশবোর্ড) — বিদ্যমান তালিকা অক্ষুণ্ণ রেখে
   if (payroll) return <TeacherPayroll teacher={payroll.teacher} startDashboard={payroll.dashboard} onBack={() => { setPayroll(null); reload(); }} />;
 
+  // রিমাইন্ডার ভিউ
+  if (reminders) return <TeacherReminders onBack={() => setReminders(false)} />;
+
   return (
     <div>
       <PageHeader icon="👨‍🏫" title="শিক্ষক ব্যবস্থাপনা" description="শিক্ষকের তথ্য, পদবি, বিষয়, বেতন ও ছবি"
-        actions={<><Button variant="secondary" onClick={() => setPayroll({ dashboard: true })} icon="💰">পে-রোল ড্যাশবোর্ড</Button><Button onClick={openCreate} icon="＋">নতুন শিক্ষক</Button></>} />
+        actions={<><Button variant="secondary" onClick={() => setReminders(true)} icon="🔔">রিমাইন্ডার</Button><Button variant="secondary" onClick={() => setPayroll({ dashboard: true })} icon="💰">পে-রোল ড্যাশবোর্ড</Button><Button onClick={openCreate} icon="＋">নতুন শিক্ষক</Button></>} />
 
       <StatRow>
         <StatCard icon="👥" label="মোট শিক্ষক" value={bn(stats.total)} color="#8E24AA" />

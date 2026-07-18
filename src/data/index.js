@@ -14,6 +14,7 @@ export { feeReceipts } from "./feeReceipts";
 export { salaryLedger } from "./salaryLedger";
 export { teacherAcademic } from "./teacherAcademic";
 export { teacherDocument } from "./teacherDocument";
+export { system } from "./system";
 export { environment, call } from "./client";
 export { seedResource } from "./webAdapter";
 

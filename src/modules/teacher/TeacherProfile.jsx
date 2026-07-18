@@ -3,6 +3,7 @@ import { PageHeader, Card, Badge, Button } from "../../ui";
 import TeacherPayroll from "./TeacherPayroll";
 import TeacherAcademic from "./TeacherAcademic";
 import TeacherDocuments from "./TeacherDocuments";
+import TeacherComm from "./TeacherComm";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const money = (v) => { const n = parseFloat(String(v ?? "").replace(/[^\d.]/g, "")) || 0; return "৳" + bn(n.toLocaleString("en-US")); };
@@ -64,6 +65,7 @@ export default function TeacherProfile({ teacher, onBack, onEdit }) {
             {t.salary && <Badge color="#00838F">বেতন {money(t.salary)}</Badge>}
           </div>
         </div>
+        <TeacherComm teacher={t} />
       </Card>
 
       {/* Tabs */}
