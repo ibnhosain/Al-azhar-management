@@ -497,6 +497,30 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_tdocs_teacher ON teacher_documents(teacher_id);
     `);
   },
+
+  // ── v16: সংরক্ষিত বেতন রশিদ — শিক্ষকের পোর্টালে সংরক্ষণ, পরে প্রিন্ট/ডিলিট।
+  //  snapshot = প্রিন্টের সম্পূর্ণ ডেটা (JSON); ledger অপরিবর্তিত থাকে।
+  function v16(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS salary_receipts (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id    INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        ledger_id     INTEGER,
+        receipt_no    TEXT,
+        teacher_name  TEXT,
+        teacher_code  TEXT,
+        month         TEXT,
+        amount        REAL DEFAULT 0,
+        method        TEXT,
+        reference     TEXT,
+        collected_by  TEXT,
+        r_date        TEXT,
+        snapshot      TEXT,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_salreceipt_teacher ON salary_receipts(teacher_id);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

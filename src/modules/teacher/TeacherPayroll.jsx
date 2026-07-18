@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { PageHeader, Card, DataTable, StatCard, StatRow, Badge, Button, Modal, useToast, TextField, SelectField, ComboField, DateField, TextareaField } from "../../ui";
-import { salaryLedger } from "../../data";
+import { salaryLedger, salaryReceipt } from "../../data";
 import TeacherReports from "./TeacherReports";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
@@ -27,17 +27,13 @@ function recentMonths(n = 15) {
 }
 const monthLabel = (ym) => { const m = /^(\d{4})-(\d{2})$/.exec(String(ym || "")); return m ? `${MONTHS_BN[+m[2] - 1]} ${bn(m[1])}` : (ym || "—"); };
 
-function printSalaryReceipt(d) {
+// রশিদ কার্ডের HTML (বাটন ছাড়া) — নিচে প্রদানকারী/গ্রহীতার স্বাক্ষর।
+function receiptCardHTML(d) {
   const payRows = (d.payItems || []).map((p) => `<tr><td style="padding:5px 0">${p.label}</td><td style="padding:5px 0;text-align:right;font-weight:600">${money(p.amount)}</td></tr>`).join("");
   const dueRows = (d.dueMonths || []).length
     ? d.dueMonths.map((m) => `<tr><td style="padding:4px 0;color:#546E7A">${monthLabel(m.month)}</td><td style="padding:4px 0;text-align:right;color:#E53935;font-weight:700">${money(m.due)}</td></tr>`).join("")
     : `<tr><td colspan="2" style="padding:6px 0;color:#2E7D32;text-align:center">কোনো বকেয়া নেই ✓</td></tr>`;
-  const w = window.open("", "_blank");
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-  <style>@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Hind Siliguri',sans-serif;padding:20px;color:#263238;font-size:13px}
-  @media print{body{padding:0}.no-print{display:none}}</style></head><body>
-  <div style="border:2px solid #1565C0;border-radius:10px;max-width:430px;margin:auto;overflow:hidden">
+  return `<div style="border:2px solid #1565C0;border-radius:10px;max-width:430px;margin:auto;overflow:hidden">
     <div style="background:#1565C0;color:#fff;padding:14px 20px;text-align:center">
       <div style="font-size:18px;font-weight:700">মাদরাসাতুল আযহার আল-আরাবিয়া</div>
       <div style="font-size:12px;opacity:.85;margin-top:3px">সদর, ময়মনসিংহ | +880 1747-658744</div>
@@ -64,14 +60,31 @@ function printSalaryReceipt(d) {
         <tr style="border-top:1px solid #E0E0E0"><td style="padding:5px 0;font-weight:700">মোট বকেয়া</td><td style="padding:5px 0;text-align:right;font-weight:700;color:${d.totalDue > 0 ? "#E53935" : "#2E7D32"}">${money(d.totalDue)}</td></tr>
       </table>
     </div>
-    <div style="border-top:1px dashed #E0E0E0;padding:12px 20px;display:flex;justify-content:space-between;font-size:11px;color:#90A4AE">
-      <span>প্রদানকারী: ${d.collectedBy || "—"}</span><span>Easy Coding Space</span>
+    <div style="border-top:1px dashed #E0E0E0;padding:26px 20px 14px;display:flex;justify-content:space-between;font-size:11.5px;color:#546E7A">
+      <div style="text-align:center"><div style="border-top:1px solid #90A4AE;width:120px;margin-bottom:4px"></div>গ্রহীতার স্বাক্ষর</div>
+      <div style="text-align:center"><div style="border-top:1px solid #90A4AE;width:120px;margin-bottom:4px"></div>প্রদানকারীর স্বাক্ষর${d.collectedBy ? `<br><span style="color:#90A4AE">(${d.collectedBy})</span>` : ""}</div>
     </div>
-  </div>
-  <div class="no-print" style="margin-top:20px;text-align:center">
+  </div>`;
+}
+
+// পূর্ণ HTML ডকুমেন্ট (প্রিন্ট বাটনসহ/ছাড়া)।
+function receiptDocHTML(d, withButtons) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Hind Siliguri',sans-serif;padding:20px;color:#263238;font-size:13px;background:#fff}
+  @media print{body{padding:0}.no-print{display:none}}</style></head><body>
+  ${receiptCardHTML(d)}
+  ${withButtons ? `<div class="no-print" style="margin-top:20px;text-align:center">
     <button onclick="window.print()" style="background:#1565C0;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit">🖨️ প্রিন্ট করুন</button>
     <button onclick="window.close()" style="background:#9E9E9E;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;margin-left:10px;font-family:inherit">বন্ধ করুন</button>
-  </div></body></html>`);
+  </div>` : ""}
+  </body></html>`;
+}
+
+// আসল প্রিন্ট উইন্ডো (এখন থেকে সংরক্ষিত রশিদ পুনঃপ্রিন্টেও ব্যবহৃত)।
+function printSalaryReceipt(d) {
+  const w = window.open("", "_blank");
+  w.document.write(receiptDocHTML(d, true));
   w.document.close();
 }
 
@@ -127,12 +140,16 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack, embedd
   const [stmt, setStmt] = useState(null);
   const [modal, setModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [receipts, setReceipts] = useState([]);         // সংরক্ষিত রশিদ
+  const [preview, setPreview] = useState(null);          // { d, savedId } — রশিদ প্রিভিউ মডাল
+  const [savingReceipt, setSavingReceipt] = useState(false);
   const emptyPay = () => ({ txn_type: "payment", month: recentMonths(1)[0].value, salary: current ? String(nz(current.salary)) : "", allowance: "", bonus: "", deduction: "", pay_amount: "", method: "নগদ", reference: "", notes: "", collected_by: "সুপার অ্যাডমিন", txn_date: todayISO() });
   const [pay, setPay] = useState(emptyPay());
   const setP = (k, v) => setPay((f) => ({ ...f, [k]: v }));
 
   const loadStmt = (tid) => salaryLedger.statement(tid).then(setStmt).catch(() => setStmt(null));
-  useEffect(() => { if (current && view === "statement") loadStmt(current.id); }, [current, view]);
+  const loadReceipts = (tid) => salaryReceipt.list(tid).then((r) => setReceipts(r || [])).catch(() => setReceipts([]));
+  useEffect(() => { if (current && view === "statement") { loadStmt(current.id); loadReceipts(current.id); } }, [current, view]);
 
   const openTeacher = (t) => { setCurrent(t); setView("statement"); };
 
@@ -158,19 +175,42 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack, embedd
       });
       const fresh = res.statement;
       setStmt(fresh);
-      if (doPrint && nz(pay.pay_amount) > 0) {
-        const mr = fresh.months.find((m) => m.month === pay.month) || {};
-        printSalaryReceipt({
-          teacher: current.name, code: current.code, month: pay.month, date: pay.txn_date, method: pay.method, reference: pay.reference,
-          payItems: [{ label: "বেতন পরিশোধ", amount: nz(pay.pay_amount) }],
-          paidNow: nz(pay.pay_amount), monthEarned: mr.earned || 0, monthPaid: mr.paid || 0, monthDue: mr.due || 0,
-          dueMonths: fresh.dueMonths || [], totalDue: fresh.due || 0, collectedBy: pay.collected_by,
-        });
-      }
       toast.success("বেতন লেজারে সংরক্ষিত হয়েছে");
       setModal(false);
+      // রশিদ প্রিভিউ (প্রিন্ট/সংরক্ষণ বাটনসহ) — শুধু পরিশোধ থাকলে
+      if (doPrint && nz(pay.pay_amount) > 0) {
+        const mr = fresh.months.find((m) => m.month === pay.month) || {};
+        setPreview({ savedId: null, ledgerId: res.payment && res.payment.id, d: {
+          teacher: current.name, code: current.code, month: pay.month, date: pay.txn_date, method: pay.method, reference: pay.reference,
+          payItems: [{ label: TXN_TYPES.find((x) => x.value === pay.txn_type)?.label || "বেতন পরিশোধ", amount: nz(pay.pay_amount) }],
+          paidNow: nz(pay.pay_amount), monthEarned: mr.earned || 0, monthPaid: mr.paid || 0, monthDue: mr.due || 0,
+          dueMonths: fresh.dueMonths || [], totalDue: fresh.due || 0, collectedBy: pay.collected_by,
+        } });
+      }
     } catch (e) { toast.error("সমস্যা: " + (e.message || e)); }
     finally { setSaving(false); }
+  };
+
+  // রশিদ প্রিভিউ থেকে সংরক্ষণ → শিক্ষকের পোর্টালে
+  const saveReceipt = async () => {
+    if (!preview || preview.savedId) return;
+    setSavingReceipt(true);
+    try {
+      const d = preview.d;
+      const row = await salaryReceipt.add({
+        teacher_id: current.id, ledger_id: preview.ledgerId, teacher_name: d.teacher, teacher_code: d.code,
+        month: d.month, amount: d.paidNow, method: d.method, reference: d.reference, collected_by: d.collectedBy,
+        r_date: d.date, snapshot: d,
+      });
+      setPreview((p) => ({ ...p, savedId: row.id }));
+      await loadReceipts(current.id);
+      toast.success("রশিদ শিক্ষকের পোর্টালে সংরক্ষিত হয়েছে");
+    } catch (e) { toast.error("সমস্যা: " + (e.message || e)); }
+    finally { setSavingReceipt(false); }
+  };
+  const delReceipt = async (r) => {
+    if (!window.confirm(`রশিদ ${r.receipt_no} মুছবেন?`)) return;
+    await salaryReceipt.remove(r.id); toast.success("রশিদ মুছে ফেলা হয়েছে"); await loadReceipts(current.id);
   };
 
   const doReverse = async (row) => {
@@ -254,6 +294,47 @@ export default function TeacherPayroll({ teacher, startDashboard, onBack, embedd
         <DataTable columns={ledgerCols} rows={stmt ? stmt.transactions : []} loading={!stmt} exportName={`salary-${current.code || current.id}`}
           empty={{ icon: "🏦", title: "লেজার খালি", description: "‘বেতন পরিশোধ’ দিয়ে প্রথম এন্ট্রি করুন" }} />
       </div>
+
+      {/* সংরক্ষিত রশিদ — পরে যেকোনো সময় প্রিন্ট বা ডিলিট */}
+      <Card style={{ padding: 16, marginTop: 16 }}>
+        <div style={{ fontWeight: 700, color: "#1b4d3e", marginBottom: 10 }}>🧾 সংরক্ষিত রশিদ <Badge color="#1565C0">{bn(receipts.length)}</Badge> <span style={{ fontSize: 12, color: "#90A4AE", fontWeight: 400 }}>— পরে যেকোনো সময় প্রিন্ট বা ডিলিট করা যাবে</span></div>
+        {receipts.length === 0 ? <div style={{ color: "#90A4AE", fontSize: 13 }}>এখনো কোনো রশিদ সংরক্ষণ করা হয়নি। বেতন পরিশোধের পর রশিদ প্রিভিউতে “সংরক্ষণ করুন” দিন।</div>
+          : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
+                <thead><tr style={{ background: "#E3F2FD" }}>{["রশিদ নং", "মাস", "পরিমাণ", "তারিখ", "মাধ্যম", "কার্যক্রম"].map((h) => <th key={h} style={{ padding: "8px 10px", textAlign: "left", border: "1px solid #cfe0f0" }}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {receipts.map((r) => (
+                    <tr key={r.id}>
+                      <td style={{ padding: "6px 10px", border: "1px solid #eef", fontWeight: 600 }}>{r.receipt_no}</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #eef" }}>{monthLabel(r.month)}</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #eef", textAlign: "right", color: "#1565C0", fontWeight: 700 }}>{money(r.amount)}</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #eef" }}>{bn(r.r_date)}</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #eef" }}>{r.method || "—"}</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #eef" }}>
+                        <div style={{ display: "flex", gap: 5 }}>
+                          <Button size="sm" variant="subtle" onClick={() => r.snapshot && printSalaryReceipt(r.snapshot)} title="প্রিন্ট">🖨️</Button>
+                          <Button size="sm" variant="dangerSoft" onClick={() => delReceipt(r)} title="মুছুন">🗑</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </Card>
+
+      {preview && (
+        <Modal title="বেতন রশিদ" icon="🧾" width={520} onClose={() => setPreview(null)}
+          footer={<>
+            <Button variant="secondary" onClick={() => setPreview(null)}>বন্ধ করুন</Button>
+            <Button variant="secondary" onClick={() => printSalaryReceipt(preview.d)} icon="🖨️">প্রিন্ট করুন</Button>
+            <Button onClick={saveReceipt} loading={savingReceipt} disabled={!!preview.savedId} icon={preview.savedId ? "✓" : "💾"}>{preview.savedId ? "সংরক্ষিত" : "সংরক্ষণ করুন"}</Button>
+          </>}>
+          <iframe title="receipt" srcDoc={receiptDocHTML(preview.d, false)} style={{ width: "100%", height: 560, border: "1px solid #e0e0e0", borderRadius: 8 }} />
+        </Modal>
+      )}
 
       {modal && (
         <Modal title={`বেতন পরিশোধ — ${current.name}`} icon="💰" width={640} onClose={() => setModal(false)}

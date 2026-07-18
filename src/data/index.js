@@ -12,6 +12,7 @@ export { backup } from "./backup";
 export { updater } from "./updater";
 export { feeReceipts } from "./feeReceipts";
 export { salaryLedger } from "./salaryLedger";
+export { salaryReceipt } from "./salaryReceipt";
 export { teacherAcademic } from "./teacherAcademic";
 export { teacherDocument } from "./teacherDocument";
 export { system } from "./system";
