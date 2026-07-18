@@ -9,6 +9,7 @@ const backupIpc = require("./backup.ipc.cjs");
 const kitchen = require("./kitchen.ipc.cjs");
 const feeReceipt = require("./feeReceipt.ipc.cjs");
 const salaryLedger = require("./salaryLedger.ipc.cjs");
+const teacherAcademic = require("./teacherAcademic.ipc.cjs");
 const updater = require("../services/updater.service.cjs");
 const { registerCrud } = require("./crud.ipc.cjs");
 const repos = require("../db/repositories/index.cjs");
@@ -43,6 +44,9 @@ function registerIpc() {
 
   // শিক্ষক বেতন লেজার (HR/Payroll)
   salaryLedger.register();
+
+  // শিক্ষক একাডেমিক লগ (ডায়েরি/পারফরম্যান্স)
+  teacherAcademic.register();
 
   // Auto Update (electron-updater / GitHub Releases)
   updater.register();

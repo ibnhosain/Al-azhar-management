@@ -457,6 +457,27 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_salledger_date ON salary_ledger(txn_date);
     `);
   },
+
+  // ── v14: শিক্ষক একাডেমিক লগ — ক্লাস ডায়েরি ও পারফরম্যান্স নোট (append)।
+  //  বিষয়/ক্লাস/রুটিন/সার্টিফিকেট teachers.extra JSON-এ; এই লগ টেবিলে
+  //  সময়-ভিত্তিক এন্ট্রি (রিপোর্টে ব্যবহারযোগ্য)।
+  function v14(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS teacher_academic_log (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id  INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        log_type    TEXT NOT NULL,           -- 'diary' | 'performance'
+        log_date    TEXT,
+        class       TEXT,
+        subject     TEXT,
+        title       TEXT,
+        detail      TEXT,
+        rating      TEXT,                     -- performance: মান/লেবেল
+        created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_tacademic_teacher ON teacher_academic_log(teacher_id, log_type);
+    `);
+  },
 ];
 
 // বর্তমান স্কিমা সংস্করণ পড়া।

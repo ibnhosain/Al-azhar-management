@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Card, Badge, Button } from "../../ui";
 import TeacherPayroll from "./TeacherPayroll";
+import TeacherAcademic from "./TeacherAcademic";
 
 const bn = (s) => String(s ?? "").replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[d]);
 const money = (v) => { const n = parseFloat(String(v ?? "").replace(/[^\d.]/g, "")) || 0; return "৳" + bn(n.toLocaleString("en-US")); };
@@ -47,8 +48,11 @@ function Placeholder({ icon, title, note }) {
   );
 }
 
-export default function TeacherProfile({ teacher: t, onBack, onEdit }) {
+export default function TeacherProfile({ teacher, onBack, onEdit }) {
   const [tab, setTab] = useState("profile");
+  const [t, setT] = useState(teacher);
+  const [prev, setPrev] = useState(teacher);
+  if (teacher !== prev) { setPrev(teacher); setT(teacher); } // prop বদলালে লোকাল কপি সিঙ্ক (effect ছাড়া)
   if (!t) return null;
 
   return (
@@ -109,17 +113,7 @@ export default function TeacherProfile({ teacher: t, onBack, onEdit }) {
         </>
       )}
 
-      {tab === "academic" && (
-        <>
-          <Section title="🎓 একাডেমিক তথ্য" color="#8E24AA">
-            <Field label="বিষয়" value={t.subject} />
-            <Field label="শিক্ষাগত যোগ্যতা" value={t.qualification} />
-            <Field label="দক্ষতা / Skills" value={t.skills} />
-          </Section>
-          <Placeholder icon="🗓️" title="রুটিন · ক্লাস ডায়েরি · পারফরম্যান্স · সার্টিফিকেট"
-            note="সাপ্তাহিক/দৈনিক রুটিন, ক্লাস ডায়েরি, পারফরম্যান্স নোট ও সার্টিফিকেট — পরবর্তী সেশনে (সেশন ৩) যুক্ত হবে।" />
-        </>
-      )}
+      {tab === "academic" && <TeacherAcademic teacher={t} onSaved={setT} />}
 
       {tab === "payroll" && <TeacherPayroll teacher={t} embedded />}
 
