@@ -108,7 +108,9 @@ export default function StudentAdmission({ onBack, onSaved }) {
     return String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, "0");
   };
 
-  const due = (Number(form.fee) || 0) - (Number(form.discount) || 0) - (Number(form.received) || 0);
+  // মোট ধার্য = ভর্তি ফি + মাসিক বেতন + মাসিক বোর্ডিং ফি; বকেয়া = মোট ধার্য − ছাড় − গৃহীত
+  const totalCharge = (Number(form.fee) || 0) + (Number(form.monthly_fee) || 0) + (Number(form.boarding_fee) || 0);
+  const due = totalCharge - (Number(form.discount) || 0) - (Number(form.received) || 0);
 
   const save = async () => {
     if (!form.name.trim()) { setStep(1); return toast.error("শিক্ষার্থীর নাম দিন"); }
@@ -256,9 +258,12 @@ export default function StudentAdmission({ onBack, onSaved }) {
               <TextField label="ছাড় / Discount" value={form.discount} onChange={(v) => set("discount", v.replace(/[^\d.]/g, ""))} />
               <TextField label="গৃহীত / Received" value={form.received} onChange={(v) => set("received", v.replace(/[^\d.]/g, ""))} />
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5a6a72", marginBottom: 5 }}>ভর্তি ফি বকেয়া / Due</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5a6a72", marginBottom: 5 }}>মোট বকেয়া / Total Due</div>
                 <div style={{ padding: "11px 12px", border: "1px solid #E0E0E0", borderRadius: 8, background: "#f7faf7", fontWeight: 700, color: due > 0 ? "#E53935" : "#2E7D32" }}>৳ {toBn(due.toLocaleString("en-US"))}</div>
               </div>
+            </div>
+            <div style={{ marginTop: 10, background: "#f1f8f1", border: "1px solid #cfe0cf", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: "#37474F" }}>
+              মোট ধার্য: ভর্তি ৳{toBn((Number(form.fee) || 0).toLocaleString("en-US"))} + বেতন ৳{toBn((Number(form.monthly_fee) || 0).toLocaleString("en-US"))} + বোর্ডিং ৳{toBn((Number(form.boarding_fee) || 0).toLocaleString("en-US"))} = <b>৳{toBn(totalCharge.toLocaleString("en-US"))}</b> · ছাড় ৳{toBn((Number(form.discount) || 0).toLocaleString("en-US"))} · গৃহীত ৳{toBn((Number(form.received) || 0).toLocaleString("en-US"))}
             </div>
             <div style={{ marginTop: 10 }}><Badge color="#00838F">শিক্ষার্থী: {form.name || "—"}</Badge> <Badge color="#6A1B9A">শ্রেণি: {form.class}</Badge></div>
           </Card>
